@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Thống Kê Tài Sản</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23c4b5fd'/%3E%3Cstop offset='100%25' stop-color='%235b3fd6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2' y='2' width='36' height='36' rx='11' fill='url(%23g)'/%3E%3Cpath d='M9 14a3 3 0 013-3h16a3 3 0 013 3v1H9v-1z' fill='rgba(255,255,255,0.55)'/%3E%3Crect x='8' y='14' width='24' height='16' rx='4' fill='%23fff'/%3E%3Ccircle cx='25' cy='22' r='3.4' fill='url(%23g)'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -909,13 +910,13 @@
               <span class="suffix">đ</span>
             </div>
           </div>
+          <div class="form-field" style="flex:1 1 220px;">
+            <label>Ghi chú (không bắt buộc)</label>
+            <input type="text" id="entryNote" class="field-input" placeholder="Ví dụ: lãi tháng này, đã rút bớt..." style="width:100%;">
+          </div>
           <div class="form-field">
             <button class="btn" id="entrySaveBtn">+ Thêm khoản</button>
           </div>
-        </div>
-        <div class="form-field" style="width:100%; margin-bottom:12px;">
-          <label>Ghi chú (không bắt buộc)</label>
-          <input type="text" id="entryNote" class="field-input" placeholder="Ví dụ: lãi tháng này, đã rút bớt..." style="width:100%;">
         </div>
         <div style="font-size:12px; color:var(--text-secondary);">Chưa có khoản phù hợp? Chọn "+ Thêm khoản mới…" trong danh sách Khoản, hoặc vào mục <b>Quản lý nhóm</b> để tạo/ẩn khoản.</div>
       </div>
@@ -1186,9 +1187,9 @@
    Để nguyên "YOUR_..." thì app tự động chạy ở chế độ offline (chỉ lưu localStorage) như trước, không lỗi.
    AUTH_EMAIL không phải bí mật (giống tên đăng nhập, lộ ra không sao) — mật khẩu thật bạn tự đặt
    trong Supabase Dashboard, KHÔNG nằm trong file này, nên mới an toàn thật sự. */
-var SUPABASE_URL = "https://fjalgcbyayotndmtobkj.supabase.co";
-var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqYWxnY2J5YXlvdG5kbXRvYmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMDc0ODUsImV4cCI6MjEwMjY4MzQ4NX0.7nyP-0tedfccWoaflDwp7dONS9FsLGkI4_ZKJo_0s3k";
-var AUTH_EMAIL = "ximvhs26092002@gmail.com";
+var SUPABASE_URL = "YOUR_SUPABASE_URL";
+var SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+var AUTH_EMAIL = "YOUR_LOGIN_EMAIL";
 /* ================================================= */
 
 /* ================= CONSTANTS ================= */
