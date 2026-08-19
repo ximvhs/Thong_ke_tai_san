@@ -138,20 +138,27 @@
     clip-path: polygon(0% 60%, 15% 45%, 30% 58%, 48% 35%, 65% 55%, 82% 40%, 100% 52%, 100% 100%, 0% 100%);
   }
   .login-visual-top, .login-visual-bottom{ position:relative; z-index:1; }
-  .login-floating-badges{ position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  /* Falling keyword/icon badges — a fixed full-viewport backdrop layer, reused both on the
+     login screen and behind the logged-in app (#appShell). pointer-events:none means it can
+     never intercept clicks, and vh-based animation distance makes it scale to any viewport
+     height rather than being tuned to one container's fixed pixel size. */
+  .floating-badges-layer{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
   .floating-badge{
-    position:absolute; top:-10%;
-    padding:4px 11px; border-radius:20px;
+    position:absolute; top:-8vh;
+    display:inline-flex; align-items:center; gap:5px;
+    padding:4px 11px 4px 8px; border-radius:20px;
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14);
     color:rgba(255,255,255,0.55); font-size:11px; font-weight:600; letter-spacing:.02em;
     white-space:nowrap;
     animation-name: floatDownBadge; animation-timing-function: linear; animation-iteration-count: infinite;
   }
+  .floating-badge .fb-icon{ font-size:13px; line-height:1; }
+  #appShell .floating-badge{ background:rgba(124,92,255,0.07); border-color:rgba(124,92,255,0.14); color:rgba(140,120,255,0.45); }
   @keyframes floatDownBadge{
     0%{ transform:translateY(0) translateX(0); opacity:0; }
     8%{ opacity:1; }
     90%{ opacity:1; }
-    100%{ transform:translateY(640px) translateX(14px); opacity:0; }
+    100%{ transform:translateY(116vh) translateX(14px); opacity:0; }
   }
   @media (prefers-reduced-motion: reduce){
     .floating-badge{ animation:none; display:none; }
@@ -257,6 +264,7 @@
     position:sticky;
     top:0;
     height:100vh;
+    z-index:1;
     border-right:1px solid var(--border);
     transition: width .25s cubic-bezier(.4,0,.2,1);
   }
@@ -395,6 +403,8 @@
     flex:1;
     padding:28px 32px 60px;
     max-width:1400px;
+    position:relative;
+    z-index:1;
   }
   .page{ display:none; }
   .page.active{ display:block; animation: pageIn .28s ease; }
@@ -832,23 +842,7 @@
 
 <!-- ============ LOGIN ============ -->
 <div id="loginScreen">
-  <div class="login-floating-badges" aria-hidden="true">
-    <span class="floating-badge" style="left:4%; animation-delay:0s; animation-duration:17s;">Vàng</span>
-    <span class="floating-badge" style="left:14%; animation-delay:8s; animation-duration:20s;">Kim cương</span>
-    <span class="floating-badge" style="left:24%; animation-delay:3s; animation-duration:16s;">Tiết kiệm</span>
-    <span class="floating-badge" style="left:34%; animation-delay:11s; animation-duration:19s;">Quản lý</span>
-    <span class="floating-badge" style="left:44%; animation-delay:5.5s; animation-duration:18s;">Xe</span>
-    <span class="floating-badge" style="left:54%; animation-delay:14s; animation-duration:21s;">Bất động sản</span>
-    <span class="floating-badge" style="left:64%; animation-delay:2s; animation-duration:17s;">Crypto</span>
-    <span class="floating-badge" style="left:74%; animation-delay:9.5s; animation-duration:20s;">Tín dụng</span>
-    <span class="floating-badge" style="left:84%; animation-delay:6.5s; animation-duration:16s;">Ngân hàng</span>
-    <span class="floating-badge" style="left:92%; animation-delay:12.5s; animation-duration:19s;">Tài chính cá nhân</span>
-    <span class="floating-badge" style="left:9%; animation-delay:16s; animation-duration:22s;">Giàu có</span>
-    <span class="floating-badge" style="left:29%; animation-delay:18.5s; animation-duration:18s;">Tài sản cá nhân</span>
-    <span class="floating-badge" style="left:49%; animation-delay:4.5s; animation-duration:23s;">Theo dõi chi tiêu</span>
-    <span class="floating-badge" style="left:69%; animation-delay:15.5s; animation-duration:19s;">Quản lý dòng tiền</span>
-    <span class="floating-badge" style="left:89%; animation-delay:7.5s; animation-duration:21s;">Danh mục tài chính</span>
-  </div>
+  <div class="floating-badges-layer" id="loginFloatingBadges" aria-hidden="true"></div>
   <div class="login-shell">
     <div class="login-visual">
       <div class="login-visual-top">
@@ -890,6 +884,7 @@
 
 <!-- ============ APP SHELL ============ -->
 <div id="appShell">
+  <div class="floating-badges-layer" id="appFloatingBadges" aria-hidden="true"></div>
   <div id="sidebar">
     <button class="sidebar-collapse-btn" id="collapseBtn" aria-label="Thu gọn menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -1482,6 +1477,41 @@ var CAT_SLOTS = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
 var STORAGE_KEY = "assetTracker_v2";
 var AUTH_KEY = "assetTracker_auth_v1";
 var BASE_SECRET = "26092002";
+
+/* Falling background badges — cute finance-related icon + keyword, used both on the login
+   screen and as a subtle backdrop behind the logged-in app. Rendered into whichever
+   ".floating-badges-layer" container(s) exist via renderFloatingBadges(). */
+var FLOATING_BADGE_WORDS = [
+  { icon:"🪙", text:"Vàng" },
+  { icon:"💎", text:"Kim cương" },
+  { icon:"🐷", text:"Tiết kiệm" },
+  { icon:"🗂️", text:"Quản lý" },
+  { icon:"🚗", text:"Xe" },
+  { icon:"🏠", text:"Bất động sản" },
+  { icon:"₿", text:"Crypto" },
+  { icon:"💳", text:"Tín dụng" },
+  { icon:"🏦", text:"Ngân hàng" },
+  { icon:"💰", text:"Tài chính cá nhân" },
+  { icon:"🤑", text:"Giàu có" },
+  { icon:"👛", text:"Tài sản cá nhân" },
+  { icon:"📊", text:"Theo dõi chi tiêu" },
+  { icon:"💸", text:"Quản lý dòng tiền" },
+  { icon:"📈", text:"Danh mục tài chính" }
+];
+function renderFloatingBadges(containerId){
+  var el = document.getElementById(containerId);
+  if(!el) return;
+  var n = FLOATING_BADGE_WORDS.length;
+  el.innerHTML = FLOATING_BADGE_WORDS.map(function(w, idx){
+    var left = ((idx / n) * 90 + (idx % 3) * 3 + 1).toFixed(1);
+    var delay = (idx * 1.7 + (idx % 4) * 0.6).toFixed(1);
+    var duration = (16 + (idx % 5) * 1.6).toFixed(1);
+    return '<span class="floating-badge" style="left:'+left+'%; animation-delay:'+delay+'s; animation-duration:'+duration+'s;">'+
+      '<span class="fb-icon">'+w.icon+'</span>'+w.text+'</span>';
+  }).join("");
+}
+renderFloatingBadges("loginFloatingBadges");
+renderFloatingBadges("appFloatingBadges");
 
 function cssVar(name){
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -2792,7 +2822,11 @@ function renderPrevMonthCompare(){
   }).filter(Boolean);
 
   var order = { missing:0, changed:1, same:2 };
-  rows.sort(function(a,b){ return order[a.status]-order[b.status] || a.item.name.localeCompare(b.item.name); });
+  rows.sort(function(a,b){
+    var gA = groupById(a.item.groupId), gB = groupById(b.item.groupId);
+    var gNameA = gA ? gA.name : "", gNameB = gB ? gB.name : "";
+    return order[a.status]-order[b.status] || gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
+  });
 
   var missingCount = rows.filter(function(r){ return r.status==="missing"; }).length;
   var missingBtn = document.getElementById("compareMissingBtn");
