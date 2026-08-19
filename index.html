@@ -2548,7 +2548,13 @@ function buildPeriodComparison(baseMonth, baseYear, curMonth, curYear){
     var status = !be ? "new" : (!ce ? "removed" : (delta===0 ? "same" : "changed"));
     return { item: item, baseAmt: baseAmt, curAmt: curAmt, delta: delta, status: status };
   }).filter(Boolean);
-  rows.sort(function(a,b){ return Math.abs(b.delta)-Math.abs(a.delta) || a.item.name.localeCompare(b.item.name); });
+  // group first, then item name within the group — keeps this list scannable like every
+  // other "danh sách khoản" view in the app, instead of jumping around by change size
+  rows.sort(function(a,b){
+    var gA = groupById(a.item.groupId), gB = groupById(b.item.groupId);
+    var gNameA = gA ? gA.name : "", gNameB = gB ? gB.name : "";
+    return gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
+  });
   return rows;
 }
 var _growthModalRows = [];
@@ -2586,14 +2592,8 @@ function renderGrowthModalBody(){
   else if(_growthModalTab==="down") shown = downRows;
   else if(_growthModalTab==="same") shown = sameRows;
   else shown = rows;
-  // within "Tổng quát", keep changed items first (largest change first), unchanged items last
-  if(_growthModalTab==="all"){
-    shown = shown.slice().sort(function(a,b){
-      var aSame = a.status==="same", bSame = b.status==="same";
-      if(aSame !== bSame) return aSame ? 1 : -1;
-      return Math.abs(b.delta)-Math.abs(a.delta) || a.item.name.localeCompare(b.item.name);
-    });
-  }
+  // rows already come sorted by group -> tên khoản (from buildPeriodComparison), and
+  // filtering above preserves that order, so every tab reads consistently by group.
 
   document.querySelectorAll("#growthModalTabs .growth-tab").forEach(function(btn){
     btn.classList.toggle("active", btn.getAttribute("data-tab")===_growthModalTab);
@@ -2821,11 +2821,13 @@ function renderPrevMonthCompare(){
     return { item: item, pe: pe, ce: ce, status: status };
   }).filter(Boolean);
 
-  var order = { missing:0, changed:1, same:2 };
+  // group first, then item name within the group, so the whole table reads the same way as
+  // every other "danh sách khoản" view — status (missing/changed/same) no longer splits a
+  // group's items apart into separate blocks, it's just shown per-row via color/text.
   rows.sort(function(a,b){
     var gA = groupById(a.item.groupId), gB = groupById(b.item.groupId);
     var gNameA = gA ? gA.name : "", gNameB = gB ? gB.name : "";
-    return order[a.status]-order[b.status] || gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
+    return gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
   });
 
   var missingCount = rows.filter(function(r){ return r.status==="missing"; }).length;
