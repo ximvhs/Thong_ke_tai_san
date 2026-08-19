@@ -690,6 +690,27 @@
   .compare-delta-up{ color:var(--success); font-weight:600; }
   .compare-delta-down{ color:var(--critical); font-weight:600; }
 
+  /* growth detail modal tabs (Tổng quát / Tăng / Giảm / Không đổi) */
+  .growth-tabs{ display:flex; gap:6px; margin:14px 0 10px; flex-wrap:wrap; }
+  .growth-tab{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:20px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text-secondary);
+    font-size:12.5px; font-weight:600; cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .growth-tab:hover{ border-color:var(--accent); color:var(--text-primary); }
+  .growth-tab-count{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:18px; height:18px; padding:0 5px; border-radius:10px;
+    background:var(--page-plane); color:var(--text-secondary);
+    font-size:11px; font-weight:700;
+  }
+  .growth-tab.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .growth-tab.active .growth-tab-count{ background:rgba(255,255,255,0.22); color:#fff; }
+  .growth-tab.tab-up.active{ background:var(--success); border-color:var(--success); }
+  .growth-tab.tab-down.active{ background:var(--critical); border-color:var(--critical); }
+
   .month-note-box{ width:100%; resize:vertical; min-height:64px; font-family:inherit; line-height:1.5; }
 
   .note-icon-btn{
@@ -945,7 +966,7 @@
 
       <div class="card" id="dashMonthNoteCard" style="margin-bottom:16px; display:none;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <h3 style="margin:0;">Ghi chú <span id="dashMonthNoteLabel"></span></h3>
+          <h3 style="margin:0;">Ghi chú tháng <span id="dashMonthNoteLabel"></span></h3>
           <button class="btn secondary" id="dashMonthNoteEdit" style="padding:5px 12px; font-size:12px;">Sửa</button>
         </div>
         <div class="note-view-text" id="dashMonthNoteText" style="font-size:13px; color:var(--text-secondary); padding:6px 0 0;"></div>
@@ -1195,11 +1216,11 @@
           <button class="btn secondary" id="searchExportBtn">Xuất kết quả (Excel)</button>
         </div>
         <div class="table-scroll"><table>
-          <thead><tr><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th>Tháng/Năm</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
+          <thead><tr><th class="num" style="width:40px;">STT</th><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th>Tháng/Năm</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
           <tbody id="searchResultBody"></tbody>
           <tfoot class="search-total-foot" id="searchTotalFoot" style="display:none;">
             <tr>
-              <td colspan="2" class="search-total-label">Tổng (<span id="searchTotalCount">0</span> khoản)</td>
+              <td colspan="3" class="search-total-label">Tổng (<span id="searchTotalCount">0</span> dòng)</td>
               <td class="num" id="searchTotalFooter">0 đ</td>
               <td colspan="3"></td>
             </tr>
@@ -1420,14 +1441,19 @@
       <span class="note-modal-amount" id="growthModalTotalDelta"></span>
     </div>
     <div class="note-modal-sub" id="growthModalSub"></div>
+    <div class="growth-tabs" id="growthModalTabs">
+      <button type="button" class="growth-tab active" data-tab="all">Tổng quát <span class="growth-tab-count" id="gtCountAll">0</span></button>
+      <button type="button" class="growth-tab tab-up" data-tab="up">Tăng <span class="growth-tab-count" id="gtCountUp">0</span></button>
+      <button type="button" class="growth-tab tab-down" data-tab="down">Giảm <span class="growth-tab-count" id="gtCountDown">0</span></button>
+      <button type="button" class="growth-tab" data-tab="same">Không đổi <span class="growth-tab-count" id="gtCountSame">0</span></button>
+    </div>
     <div class="table-scroll detail-modal-scroll">
       <table>
         <thead><tr><th>Khoản</th><th class="num">Thay đổi</th></tr></thead>
         <tbody id="growthModalBody"></tbody>
       </table>
     </div>
-    <div class="empty-state" id="growthModalEmpty" style="display:none;">Không có khoản nào thay đổi.</div>
-    <div class="sub" id="growthModalSameNote" style="margin-top:8px;"></div>
+    <div class="empty-state" id="growthModalEmpty" style="display:none;">Không có khoản nào trong mục này.</div>
     <div class="modal-actions">
       <button class="btn secondary" id="growthModalClose">Đóng</button>
     </div>
@@ -1707,6 +1733,21 @@ function entriesFor(month, year, groupId){
 }
 function totalFor(month, year, groupId){
   return entriesFor(month, year, groupId).reduce(function(s,e){ return s + e.amount; }, 0);
+}
+/* Shared ordering for any list of entries ("khoản") shown to the user: group name first,
+   then item name within the group, then amount (largest first) as a final tie-breaker.
+   Keeps every detail list (KPI/group click-throughs, entry list, etc.) easy to scan. */
+function sortEntriesByGroupItemAmount(list){
+  return list.slice().sort(function(a,b){
+    var itemA = itemById(a.itemId), itemB = itemById(b.itemId);
+    var groupA = itemA ? groupById(itemA.groupId) : null;
+    var groupB = itemB ? groupById(itemB.groupId) : null;
+    var gA = groupA ? groupA.name : "";
+    var gB = groupB ? groupB.name : "";
+    var iA = itemA ? itemA.name : "";
+    var iB = itemB ? itemB.name : "";
+    return gA.localeCompare(gB) || iA.localeCompare(iB) || (b.amount - a.amount);
+  });
 }
 function yearsInData(){
   var ys = {};
@@ -2424,7 +2465,7 @@ function openDetailView(month, year, groupId){
   var tbody = document.getElementById("detailModalBody");
   tbody.innerHTML = "";
   document.getElementById("detailModalEmpty").style.display = list.length ? "none" : "block";
-  list.slice().sort(function(a,b){ return b.amount - a.amount; }).forEach(function(e){
+  sortEntriesByGroupItemAmount(list).forEach(function(e){
     var item = itemById(e.itemId);
     var itemGroup = item ? groupById(item.groupId) : null;
     var iname = item ? (item.name + (item.archived ? " (đã ẩn)":"")) : "(đã xoá)";
@@ -2480,6 +2521,58 @@ function buildPeriodComparison(baseMonth, baseYear, curMonth, curYear){
   rows.sort(function(a,b){ return Math.abs(b.delta)-Math.abs(a.delta) || a.item.name.localeCompare(b.item.name); });
   return rows;
 }
+var _growthModalRows = [];
+var _growthModalTab = "all";
+function growthModalRowHtml(r){
+  var g = groupById(r.item.groupId);
+  var color = itemColor(r.item);
+  var nameCell = '<span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+(g?g.name:"—")+'</span> '+r.item.name;
+  var deltaClass = r.delta>=0 ? "compare-delta-up" : "compare-delta-down";
+  var statusCell;
+  if(r.status==="new"){
+    statusCell = '<span class="compare-status-changed">Mới: '+fmtMoney(r.curAmt)+' <span class="'+deltaClass+'">(+'+fmtMoney(r.delta)+')</span></span>';
+  } else if(r.status==="removed"){
+    statusCell = '<span class="compare-status-missing">Đã hết: '+fmtMoney(r.baseAmt)+' → 0 <span class="'+deltaClass+'">('+fmtMoney(r.delta)+')</span></span>';
+  } else if(r.status==="same"){
+    statusCell = '<span class="compare-status-same">Không đổi ('+fmtMoney(r.curAmt)+')</span>';
+  } else {
+    statusCell = '<span class="compare-status-changed">'+fmtMoney(r.baseAmt)+' → '+fmtMoney(r.curAmt)+' <span class="'+deltaClass+'">('+(r.delta>=0?"+":"")+fmtMoney(r.delta)+')</span></span>';
+  }
+  return '<tr><td>'+nameCell+'</td><td class="num">'+statusCell+'</td></tr>';
+}
+function renderGrowthModalBody(){
+  var rows = _growthModalRows;
+  var upRows = rows.filter(function(r){ return r.delta > 0; });
+  var downRows = rows.filter(function(r){ return r.delta < 0; });
+  var sameRows = rows.filter(function(r){ return r.status === "same"; });
+
+  document.getElementById("gtCountAll").textContent = rows.length;
+  document.getElementById("gtCountUp").textContent = upRows.length;
+  document.getElementById("gtCountDown").textContent = downRows.length;
+  document.getElementById("gtCountSame").textContent = sameRows.length;
+
+  var shown;
+  if(_growthModalTab==="up") shown = upRows;
+  else if(_growthModalTab==="down") shown = downRows;
+  else if(_growthModalTab==="same") shown = sameRows;
+  else shown = rows;
+  // within "Tổng quát", keep changed items first (largest change first), unchanged items last
+  if(_growthModalTab==="all"){
+    shown = shown.slice().sort(function(a,b){
+      var aSame = a.status==="same", bSame = b.status==="same";
+      if(aSame !== bSame) return aSame ? 1 : -1;
+      return Math.abs(b.delta)-Math.abs(a.delta) || a.item.name.localeCompare(b.item.name);
+    });
+  }
+
+  document.querySelectorAll("#growthModalTabs .growth-tab").forEach(function(btn){
+    btn.classList.toggle("active", btn.getAttribute("data-tab")===_growthModalTab);
+  });
+
+  var tbody = document.getElementById("growthModalBody");
+  tbody.innerHTML = shown.map(growthModalRowHtml).join("");
+  document.getElementById("growthModalEmpty").style.display = shown.length ? "none" : "block";
+}
 function openGrowthDetailModal(kind, month, year){
   var baseMonth, baseYear, label;
   if(kind==="ytd"){
@@ -2491,8 +2584,8 @@ function openGrowthDetailModal(kind, month, year){
     label = "So với " + MONTH_NAMES[baseMonth-1] + "/" + baseYear;
   }
   var rows = buildPeriodComparison(baseMonth, baseYear, month, year);
-  var changedRows = rows.filter(function(r){ return r.delta !== 0; });
-  var sameCount = rows.length - changedRows.length;
+  _growthModalRows = rows;
+  _growthModalTab = "all";
 
   var baseTotal = totalFor(baseMonth, baseYear, null);
   var curTotal = totalFor(month, year, null);
@@ -2505,27 +2598,7 @@ function openGrowthDetailModal(kind, month, year){
   deltaEl.textContent = (totalDelta>=0?"+":"") + fmtMoney(totalDelta) + (isFinite(totalPct) ? " (" + fmtPct(totalPct) + ")" : "");
   deltaEl.className = "note-modal-amount growth-total-delta " + (totalDelta>=0 ? "up":"down");
 
-  var tbody = document.getElementById("growthModalBody");
-  tbody.innerHTML = "";
-  document.getElementById("growthModalEmpty").style.display = changedRows.length ? "none" : "block";
-  changedRows.forEach(function(r){
-    var g = groupById(r.item.groupId);
-    var color = itemColor(r.item);
-    var nameCell = '<span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+(g?g.name:"—")+'</span> '+r.item.name;
-    var deltaClass = r.delta>=0 ? "compare-delta-up" : "compare-delta-down";
-    var statusCell;
-    if(r.status==="new"){
-      statusCell = '<span class="compare-status-changed">Mới: '+fmtMoney(r.curAmt)+' <span class="'+deltaClass+'">(+'+fmtMoney(r.delta)+')</span></span>';
-    } else if(r.status==="removed"){
-      statusCell = '<span class="compare-status-missing">Đã hết: '+fmtMoney(r.baseAmt)+' → 0 <span class="'+deltaClass+'">('+fmtMoney(r.delta)+')</span></span>';
-    } else {
-      statusCell = '<span class="compare-status-changed">'+fmtMoney(r.baseAmt)+' → '+fmtMoney(r.curAmt)+' <span class="'+deltaClass+'">('+(r.delta>=0?"+":"")+fmtMoney(r.delta)+')</span></span>';
-    }
-    var tr = document.createElement("tr");
-    tr.innerHTML = '<td>'+nameCell+'</td><td class="num">'+statusCell+'</td>';
-    tbody.appendChild(tr);
-  });
-  document.getElementById("growthModalSameNote").textContent = sameCount ? (sameCount+" khoản không đổi giữa 2 kỳ.") : "";
+  renderGrowthModalBody();
   document.getElementById("growthModalBackdrop").classList.add("active");
 }
 function initGrowthModal(){
@@ -2535,6 +2608,12 @@ function initGrowthModal(){
   backdrop.addEventListener("click", function(e){ if(e.target === backdrop) close(); });
   document.addEventListener("keydown", function(e){
     if(e.key === "Escape" && backdrop.classList.contains("active")) close();
+  });
+  document.querySelectorAll("#growthModalTabs .growth-tab").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      _growthModalTab = btn.getAttribute("data-tab");
+      renderGrowthModalBody();
+    });
   });
 }
 async function deleteEntry(id){
@@ -2548,13 +2627,13 @@ function renderEntryTable(){
   var m = document.getElementById("entryMonth").value;
   var y = document.getElementById("entryYear").value;
   var g = document.getElementById("listGroup").value;
-  var list = state.entries.filter(function(e){
+  var list = sortEntriesByGroupItemAmount(state.entries.filter(function(e){
     var item = itemById(e.itemId);
     var eGroupId = item ? item.groupId : null;
     return e.month===parseInt(m,10) &&
            e.year===parseInt(y,10) &&
            (g==="all" || eGroupId===g);
-  }).sort(function(a,b){ return (b.year-a.year) || (b.month-a.month); });
+  }));
 
   var subEl = document.getElementById("entryListSub");
   if(subEl){ subEl.textContent = "Tháng "+m+"/"+y; }
@@ -3310,20 +3389,23 @@ function renderSearchResults(resetPage){
   document.getElementById("searchResultSub").textContent = list.length + " khoản · Tổng " + fmtMoney(total);
   _lastSearchResults = list;
 
-  document.getElementById("searchTotalFoot").style.display = list.length ? "table-footer-group" : "none";
-  document.getElementById("searchTotalCount").textContent = list.length;
-  document.getElementById("searchTotalFooter").textContent = fmtMoney(total);
-
   if(resetPage) searchCurrentPage = 1;
   var totalPages = Math.max(1, Math.ceil(list.length / SEARCH_PAGE_SIZE));
   if(searchCurrentPage > totalPages) searchCurrentPage = totalPages;
   var startIdx = (searchCurrentPage-1) * SEARCH_PAGE_SIZE;
   var pageList = list.slice(startIdx, startIdx + SEARCH_PAGE_SIZE);
 
+  // footer total only covers the rows currently shown on this page (header sub above already
+  // shows the grand total across all filtered results, including pages not shown here)
+  var pageTotal = pageList.reduce(function(s,e){ return s+e.amount; }, 0);
+  document.getElementById("searchTotalFoot").style.display = pageList.length ? "table-footer-group" : "none";
+  document.getElementById("searchTotalCount").textContent = pageList.length;
+  document.getElementById("searchTotalFooter").textContent = fmtMoney(pageTotal);
+
   var tbody = document.getElementById("searchResultBody");
   tbody.innerHTML = "";
   document.getElementById("searchEmptyState").style.display = list.length ? "none" : "block";
-  pageList.forEach(function(e){
+  pageList.forEach(function(e, idx){
     var item = itemById(e.itemId);
     var g = item ? groupById(item.groupId) : null;
     var color = itemColor(item);
@@ -3332,6 +3414,7 @@ function renderSearchResults(resetPage){
     var hasNote = !!(e.note && e.note.trim());
     var tr = document.createElement("tr");
     tr.innerHTML =
+      '<td class="num">'+(startIdx+idx+1)+'</td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
       '<td>'+iname+'</td>'+
       '<td class="num">'+fmtMoney(e.amount)+'</td>'+
