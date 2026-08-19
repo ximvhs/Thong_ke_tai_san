@@ -365,18 +365,28 @@
   :root:not([data-theme="light"]) .theme-switch-thumb .icon-moon{ opacity:1; }
 
   .btn-logout{
+    position:relative; isolation:isolate; overflow:hidden;
     width:100%; padding:10px 12px; border-radius:10px;
     background:linear-gradient(135deg, rgba(124,92,255,0.16), rgba(91,63,214,0.16));
     border:1px solid rgba(124,92,255,0.35);
     color:#fff; font-size:12.5px; font-weight:600; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:8px;
-    transition: background .2s ease, transform .12s ease, box-shadow .2s ease;
+    transition: transform .12s ease, box-shadow .25s ease, border-color .25s ease;
   }
   .btn-logout svg{ width:15px; height:15px; flex-shrink:0; }
-  .btn-logout:hover{
+  /* Two CSS gradients can't cross-fade via a plain `background` transition (browsers just
+     snap between them), so the hover gradient lives on its own layer and we fade its
+     opacity instead — that animates smoothly. */
+  .btn-logout::before{
+    content:""; position:absolute; inset:0; z-index:-1;
     background:linear-gradient(135deg, var(--accent), var(--accent-2));
-    box-shadow:0 8px 20px rgba(124,92,255,0.35);
+    opacity:0; transition:opacity .25s ease;
   }
+  .btn-logout:hover{
+    box-shadow:0 8px 20px rgba(124,92,255,0.35);
+    border-color:transparent;
+  }
+  .btn-logout:hover::before{ opacity:1; }
   .btn-logout:active{ transform:scale(0.97); }
 
   /* ---------- COLLAPSED SIDEBAR (desktop) ---------- */
@@ -467,6 +477,29 @@
   .cs-option.selected{ background:rgba(124,92,255,0.14); color:var(--accent); font-weight:600; }
   .cs-option .cs-check{ width:14px; height:14px; opacity:0; flex-shrink:0; }
   .cs-option.selected .cs-check{ opacity:1; }
+  .cs-option.cs-option-create{
+    margin-top:4px; padding-top:9px; border-top:1px dashed var(--border);
+    color:var(--accent); font-weight:700;
+  }
+  .cs-option.cs-option-create:hover{ background:rgba(124,92,255,0.12); }
+
+  .amt-abbr{
+    position:relative; cursor:help;
+    border-bottom:1px dashed var(--muted);
+  }
+  .amt-abbr::after{
+    content:attr(data-full);
+    position:absolute; bottom:135%; left:50%;
+    transform:translateX(-50%) translateY(4px) scale(0.9);
+    background:var(--text-primary); color:var(--surface-2);
+    padding:5px 9px; border-radius:7px; font-size:11px; font-weight:600;
+    white-space:nowrap; opacity:0; pointer-events:none; z-index:8;
+    box-shadow:0 8px 20px rgba(0,0,0,0.25);
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .amt-abbr:hover::after, .amt-abbr:active::after{
+    opacity:1; transform:translateX(-50%) translateY(0) scale(1);
+  }
 
   .btn{
     padding:9px 16px;
@@ -550,6 +583,11 @@
   tbody tr:hover{ background:var(--page-plane); }
   td.num{ text-align:right; font-variant-numeric: tabular-nums; }
   th.num{ text-align:right; }
+  th.sortable-th{ cursor:pointer; user-select:none; white-space:nowrap; transition:color .15s ease; }
+  th.sortable-th:hover{ color:var(--text-primary); }
+  th.sortable-th .sort-arrow{ display:inline-block; width:9px; margin-left:3px; opacity:0; font-size:10px; }
+  th.sortable-th.sort-active{ color:var(--accent); }
+  th.sortable-th.sort-active .sort-arrow{ opacity:1; }
 
   .group-tag{
     display:inline-flex; align-items:center; gap:6px;
@@ -644,6 +682,10 @@
   /* groups management */
   .groups-manage-grid{ display:flex; flex-direction:column; gap:16px; }
   .group-manage-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  /* Tên nhóm ở đầu mỗi thẻ quản lý cần nổi bật hơn để lướt mắt nhận ra ngay — .group-tag
+     dùng chung ở nhiều nơi khác (bảng Tra cứu, Nhập khoản...) nên chỉ phóng to riêng ở đây. */
+  .group-manage-head .group-tag{ font-size:16px; padding:7px 16px; font-weight:700; }
+  .group-manage-head .group-tag .dot-sw{ width:11px; height:11px; }
   .add-item-row{ display:flex; gap:8px; margin-top:14px; }
   .add-item-row input{ flex:1; }
   .badge-archived{ font-size:11px; color:var(--muted); background:var(--page-plane); padding:2px 8px; border-radius:20px; margin-left:6px; }
@@ -665,6 +707,9 @@
   .modal-lg{ width:640px; }
   .detail-modal-scroll{ max-height:400px; overflow-y:auto; margin-top:4px; }
   .detail-modal-scroll .note-icon-btn{ margin:0 auto; display:flex; }
+  /* Chiều cao cố định riêng cho khung có tab (Tổng quát/Tăng/Giảm/Không đổi) — nếu không,
+     chuyển tab đổi số dòng khiến cả popup co giãn liên tục, thao tác khó chịu. */
+  #growthModalBackdrop .detail-modal-scroll{ height:340px; max-height:340px; }
   .search-input-wrap{ position:relative; width:100%; }
   .search-input-icon{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--muted); pointer-events:none; }
   .search-input-wrap .field-input[type="text"]{ width:100%; padding-left:38px; }
@@ -973,15 +1018,6 @@
           <div class="kpi-label">Tổng tài sản</div>
           <div class="kpi-value" id="kpiTotal">0 đ</div>
         </div>
-        <div class="card kpi-card kpi-card-clickable" id="kpiYtdCard" data-kpi="ytd" title="Xem chi tiết các khoản tăng/giảm">
-          <div class="kpi-card-top">
-            <div class="kpi-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
-            <span class="kpi-pct-pill" id="kpiYtdPct">0%</span>
-          </div>
-          <div class="kpi-label">Tăng trưởng so với đầu năm</div>
-          <div class="kpi-value" id="kpiYtd">0 đ</div>
-          <span class="kpi-context" id="kpiYtdBadge"></span>
-        </div>
         <div class="card kpi-card kpi-card-clickable" id="kpiMomCard" data-kpi="mom" title="Xem chi tiết các khoản tăng/giảm">
           <div class="kpi-card-top">
             <div class="kpi-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
@@ -995,6 +1031,15 @@
           <div class="kpi-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
           <div class="kpi-label">Số khoản đã ghi nhận</div>
           <div class="kpi-value" id="kpiCount">0</div>
+        </div>
+        <div class="card kpi-card kpi-card-clickable" id="kpiYtdCard" data-kpi="ytd" title="Xem chi tiết các khoản tăng/giảm">
+          <div class="kpi-card-top">
+            <div class="kpi-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+            <span class="kpi-pct-pill" id="kpiYtdPct">0%</span>
+          </div>
+          <div class="kpi-label">Tăng trưởng so với đầu năm</div>
+          <div class="kpi-value" id="kpiYtd">0 đ</div>
+          <span class="kpi-context" id="kpiYtdBadge"></span>
         </div>
       </div>
 
@@ -1102,12 +1147,13 @@
             <h3 style="margin:0;">Danh sách khoản đã nhập</h3>
             <div class="sub" id="entryListSub" style="font-size:12px;">Theo tháng đang chọn ở form phía trên</div>
           </div>
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn danger" id="entryBulkDeleteBtn" style="display:none; padding:6px 12px; font-size:12px;">Xoá đã chọn (<span id="entryBulkCount">0</span>)</button>
             <select id="listGroup"></select>
           </div>
         </div>
         <div class="table-scroll"><table>
-          <thead><tr><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
+          <thead><tr><th style="width:34px;"><input type="checkbox" id="entrySelectAllCb" title="Chọn tất cả"></th><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
           <tbody id="entryTableBody"></tbody>
         </table></div>
         <div class="empty-state" id="entryEmptyState" style="display:none;">Chưa có khoản nào trong tháng này.</div>
@@ -1140,6 +1186,12 @@
       <div class="card" style="margin-bottom:16px;">
         <h3>Tổng tài sản theo tháng — năm <span id="yearlyYearLabel"></span></h3>
         <div class="table-scroll"><table id="yearlyTable"></table></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <h3>Chi tiết theo khoản theo tháng — năm <span id="yearlyItemYearLabel"></span></h3>
+        <div class="table-scroll"><table id="yearlyItemTable"></table></div>
+        <div class="empty-state" id="yearlyItemEmpty" style="display:none;">Chưa có khoản nào có dữ liệu trong năm này.</div>
       </div>
 
       <div class="grid-groups" id="yearlyGroupCharts" style="margin-bottom:16px;"></div>
@@ -1208,14 +1260,27 @@
             <h3 style="margin:0;">Kết quả</h3>
             <div class="sub" id="searchResultSub" style="font-size:12px;">—</div>
           </div>
-          <button class="btn secondary" id="searchExportBtn">Xuất kết quả (Excel)</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn danger" id="searchBulkDeleteBtn" style="display:none; padding:9px 14px;">Xoá đã chọn (<span id="searchBulkCount">0</span>)</button>
+            <button class="btn secondary" id="searchBulkExportBtn" style="display:none;">Xuất đã chọn (<span id="searchBulkExportCount">0</span>)</button>
+            <button class="btn secondary" id="searchExportBtn">Xuất kết quả (Excel)</button>
+          </div>
         </div>
         <div class="table-scroll"><table>
-          <thead><tr><th class="num" style="width:40px;">STT</th><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th>Tháng/Năm</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
+          <thead><tr>
+            <th style="width:34px;"><input type="checkbox" id="searchSelectAllCb" title="Chọn tất cả"></th>
+            <th class="num" style="width:40px;">STT</th>
+            <th class="sortable-th" data-sort="group">Nhóm<span class="sort-arrow"></span></th>
+            <th class="sortable-th" data-sort="item">Tên khoản<span class="sort-arrow"></span></th>
+            <th class="num sortable-th" data-sort="amount">Số tiền<span class="sort-arrow"></span></th>
+            <th class="sortable-th" data-sort="date">Tháng/Năm<span class="sort-arrow"></span></th>
+            <th class="num">Ghi chú</th>
+            <th class="num">Thao tác</th>
+          </tr></thead>
           <tbody id="searchResultBody"></tbody>
           <tfoot class="search-total-foot" id="searchTotalFoot" style="display:none;">
             <tr>
-              <td colspan="3" class="search-total-label">Tổng (<span id="searchTotalCount">0</span> dòng)</td>
+              <td colspan="4" class="search-total-label">Tổng (<span id="searchTotalCount">0</span> dòng)</td>
               <td class="num" id="searchTotalFooter">0 đ</td>
               <td colspan="3"></td>
             </tr>
@@ -1261,31 +1326,72 @@
         </div>
       </div>
       <div class="card" style="margin-top:16px;">
-        <h3>Về mật khẩu đăng nhập</h3>
-        <p id="pwdInfoOffline" style="font-size:13px; color:var(--text-secondary); line-height:1.6; display:none;">
-          Mật khẩu gồm 2 phần ghép lại, tự đổi mỗi tháng theo ngày hệ thống của thiết bị.
-          Đây là lớp bảo vệ nhẹ để tránh người khác vô tình mở app, không thay thế cho việc bảo mật thiết bị của bạn.
-          Ở chế độ này mật khẩu được tự tính theo tháng chứ không lưu trên server, nên chưa hỗ trợ tự đổi qua giao diện — muốn đổi cần chỉnh trong mã nguồn.
-        </p>
-        <div id="pwdChangeCloud" style="display:none;">
-          <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin-bottom:14px;">Đổi mật khẩu đăng nhập cho tài khoản của bạn.</p>
-          <div class="form-field" style="margin-bottom:10px;">
-            <label>Mật khẩu hiện tại</label>
-            <input type="password" id="pwdCurrentInput" placeholder="Nhập mật khẩu hiện tại" style="width:100%;">
+        <div class="settings-row">
+          <div>
+            <div class="t">Mật khẩu đăng nhập</div>
+            <div class="d" id="pwdInfoOffline" style="display:none; line-height:1.6; max-width:520px;">
+              Mật khẩu gồm 2 phần ghép lại, tự đổi mỗi tháng theo ngày hệ thống của thiết bị.
+              Đây là lớp bảo vệ nhẹ để tránh người khác vô tình mở app, không thay thế cho việc bảo mật thiết bị của bạn.
+              Ở chế độ này mật khẩu được tự tính theo tháng chứ không lưu trên server, nên chưa hỗ trợ tự đổi qua giao diện — muốn đổi cần chỉnh trong mã nguồn.
+            </div>
+            <div class="d" id="pwdInfoCloud" style="display:none;">Đổi mật khẩu đăng nhập cho tài khoản của bạn.</div>
           </div>
-          <div class="form-field" style="margin-bottom:10px;">
-            <label>Mật khẩu mới</label>
-            <input type="password" id="pwdNewInput" placeholder="Ít nhất 6 ký tự" style="width:100%;">
-          </div>
-          <div class="form-field" style="margin-bottom:14px;">
-            <label>Nhập lại mật khẩu mới</label>
-            <input type="password" id="pwdNewConfirmInput" placeholder="Nhập lại mật khẩu mới" style="width:100%;">
-          </div>
-          <button class="btn" id="pwdChangeBtn">Đổi mật khẩu</button>
+          <button class="btn secondary" id="pwdChangeOpenBtn" style="display:none;">Đổi mật khẩu</button>
         </div>
       </div>
     </div>
 
+  </div>
+</div>
+
+<div class="modal-backdrop" id="searchEditModalBackdrop">
+  <div class="modal">
+    <h3>Sửa khoản</h3>
+    <div class="modal-context" id="searchEditModalContext">Nhóm: — · Khoản: —</div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Tháng</label>
+        <select id="searchEditMonth"></select>
+      </div>
+      <div class="form-field">
+        <label>Năm</label>
+        <select id="searchEditYear"></select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Số tiền</label>
+      <input type="text" id="searchEditAmount" inputmode="numeric">
+    </div>
+    <div class="form-field">
+      <label>Ghi chú (không bắt buộc)</label>
+      <input type="text" id="searchEditNote">
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="searchEditCancel">Huỷ</button>
+      <button class="btn" id="searchEditSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="pwdChangeModalBackdrop">
+  <div class="modal">
+    <h3>Đổi mật khẩu đăng nhập</h3>
+    <div class="form-field" style="margin-bottom:10px;">
+      <label>Mật khẩu hiện tại</label>
+      <input type="password" id="pwdCurrentInput" placeholder="Nhập mật khẩu hiện tại" style="width:100%;">
+    </div>
+    <div class="form-field" style="margin-bottom:10px;">
+      <label>Mật khẩu mới</label>
+      <input type="password" id="pwdNewInput" placeholder="Ít nhất 6 ký tự" style="width:100%;">
+    </div>
+    <div class="form-field" style="margin-bottom:6px;">
+      <label>Nhập lại mật khẩu mới</label>
+      <input type="password" id="pwdNewConfirmInput" placeholder="Nhập lại mật khẩu mới" style="width:100%;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="pwdChangeModalCancel">Huỷ</button>
+      <button class="btn" id="pwdChangeBtn">Đổi mật khẩu</button>
+    </div>
   </div>
 </div>
 
@@ -1448,7 +1554,6 @@
         <tbody id="growthModalBody"></tbody>
       </table>
     </div>
-    <div class="empty-state" id="growthModalEmpty" style="display:none;">Không có khoản nào trong mục này.</div>
     <div class="modal-actions">
       <button class="btn secondary" id="growthModalClose">Đóng</button>
     </div>
@@ -1466,9 +1571,9 @@
    Để nguyên "YOUR_..." thì app tự động chạy ở chế độ offline (chỉ lưu localStorage) như trước, không lỗi.
    AUTH_EMAIL không phải bí mật (giống tên đăng nhập, lộ ra không sao) — mật khẩu thật bạn tự đặt
    trong Supabase Dashboard, KHÔNG nằm trong file này, nên mới an toàn thật sự. */
-var SUPABASE_URL = "https://fjalgcbyayotndmtobkj.supabase.co";
-var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqYWxnY2J5YXlvdG5kbXRvYmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMDc0ODUsImV4cCI6MjEwMjY4MzQ4NX0.7nyP-0tedfccWoaflDwp7dONS9FsLGkI4_ZKJo_0s3k";
-var AUTH_EMAIL = "ximvhs26092002@gmail.com";
+var SUPABASE_URL = "YOUR_SUPABASE_URL";
+var SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+var AUTH_EMAIL = "YOUR_LOGIN_EMAIL";
 /* ================================================= */
 
 /* ================= CONSTANTS ================= */
@@ -1712,6 +1817,21 @@ function logout(){
 function fmtMoney(n){
   n = Math.round(n || 0);
   return n.toLocaleString("vi-VN") + " đ";
+}
+function abbreviateMoneyUnit(n){
+  n = Math.round(n || 0);
+  var abs = Math.abs(n);
+  var sign = n<0 ? "-" : "";
+  if(abs >= 1000000000){
+    return sign + (Math.round(abs/100000000)/10).toLocaleString("vi-VN") + "T";
+  }
+  if(abs >= 1000000){
+    return sign + (Math.round(abs/100000)/10).toLocaleString("vi-VN") + "Tr";
+  }
+  if(abs >= 1000){
+    return sign + (Math.round(abs/100)/10).toLocaleString("vi-VN") + "N";
+  }
+  return n.toLocaleString("vi-VN");
 }
 function abbreviateMoney(n){
   n = Math.round(n || 0);
@@ -1979,7 +2099,7 @@ function fillYearSelect(sel, includeAll){
   }
   var ys = yearsInData();
   var curY = new Date().getFullYear();
-  for(var y=curY+3; y>=curY-15; y--){ if(ys.indexOf(y)===-1) ys.push(y); }
+  for(var y=curY+1; y>=curY-3; y--){ if(ys.indexOf(y)===-1) ys.push(y); }
   ys = Array.from(new Set(ys)).sort(function(a,b){return b-a;});
   ys.forEach(function(y){
     var o = document.createElement("option");
@@ -2050,9 +2170,10 @@ function enhanceSelect(selectEl){
   function buildOptions(){
     panel.innerHTML = "";
     Array.from(selectEl.options).forEach(function(opt){
+      var isCreate = opt.value === "__create__";
       var item = document.createElement("div");
-      item.className = "cs-option" + (opt.value===selectEl.value ? " selected" : "");
-      item.innerHTML = '<span>'+opt.textContent+'</span><svg class="cs-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      item.className = "cs-option" + (opt.value===selectEl.value ? " selected" : "") + (isCreate ? " cs-option-create" : "");
+      item.innerHTML = '<span>'+(isCreate ? '<span style="margin-right:4px;">✨</span>' : '')+opt.textContent+'</span><svg class="cs-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       item.addEventListener("click", function(){
         selectEl.value = opt.value;
         wrapper.classList.remove("open");
@@ -2159,12 +2280,38 @@ function baseChartColors(){
 }
 
 /* ================= DASHBOARD PAGE ================= */
+/* Đếm số chạy từ 0 tới giá trị thật — chỉ dùng cho lần load trang đầu tiên (xem renderDashboard).
+   formatFn nhận giá trị đang nội suy (có thể âm/lẻ) và trả về chuỗi hiển thị đúng định dạng cuối cùng. */
+function animateCountUp(el, target, formatFn, duration){
+  if(!el) return;
+  duration = duration || 900;
+  var t0 = null;
+  function step(ts){
+    if(t0===null) t0 = ts;
+    var progress = Math.min(1, (ts - t0) / duration);
+    var eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = formatFn(target * eased);
+    if(progress < 1) requestAnimationFrame(step);
+    else el.textContent = formatFn(target);
+  }
+  requestAnimationFrame(step);
+}
+function latestMonthWithData(){
+  if(!state.entries.length) return null;
+  var best = null, bestKey = -1;
+  state.entries.forEach(function(e){
+    var key = e.year*12 + (e.month-1);
+    if(key > bestKey){ bestKey = key; best = { month: e.month, year: e.year }; }
+  });
+  return best;
+}
 function initDashboardControls(){
   var now = new Date();
   fillMonthSelect(document.getElementById("dashMonth"), false);
   fillYearSelect(document.getElementById("dashYear"), false);
-  document.getElementById("dashMonth").value = now.getMonth()+1;
-  document.getElementById("dashYear").value = now.getFullYear();
+  var latest = latestMonthWithData();
+  document.getElementById("dashMonth").value = latest ? latest.month : now.getMonth()+1;
+  document.getElementById("dashYear").value = latest ? latest.year : now.getFullYear();
   document.getElementById("dashMonth").addEventListener("change", function(){ renderDashboard(); });
   document.getElementById("dashYear").addEventListener("change", function(){ renderDashboard(); });
   document.getElementById("dashMonthNoteEdit").addEventListener("click", function(){
@@ -2181,7 +2328,7 @@ function initDashboardControls(){
   });
   enhanceSelects(["dashMonth","dashYear"]);
 }
-function renderDashboard(){
+function renderDashboard(animate){
   var month = parseInt(document.getElementById("dashMonth").value,10);
   var year = parseInt(document.getElementById("dashYear").value,10);
   document.getElementById("dashYearLabel").textContent = year;
@@ -2195,7 +2342,7 @@ function renderDashboard(){
   }
 
   var total = totalFor(month, year, null);
-  document.getElementById("kpiTotal").textContent = fmtMoney(total);
+  var kpiTotalEl = document.getElementById("kpiTotal");
 
   var janTotal = totalFor(1, year, null);
   var ytdDelta = total - janTotal;
@@ -2203,7 +2350,6 @@ function renderDashboard(){
   var ytdValueEl = document.getElementById("kpiYtd");
   var ytdPctEl = document.getElementById("kpiYtdPct");
   var ytdBadge = document.getElementById("kpiYtdBadge");
-  ytdValueEl.textContent = (ytdDelta>=0?"+":"") + fmtMoney(ytdDelta);
   ytdPctEl.textContent = isFinite(ytdPct) ? fmtPct(ytdPct) : "—";
   ytdPctEl.className = "kpi-pct-pill " + (ytdDelta>=0 ? "up":"down");
   ytdBadge.textContent = (janTotal>0 || total>0) ? "so với Tháng 1" : "Chưa có dữ liệu Tháng 1";
@@ -2216,12 +2362,26 @@ function renderDashboard(){
   var momValueEl = document.getElementById("kpiMom");
   var momPctEl = document.getElementById("kpiMomPct");
   var momBadge = document.getElementById("kpiMomBadge");
-  momValueEl.textContent = (momDelta>=0?"+":"") + fmtMoney(momDelta);
   momPctEl.textContent = isFinite(momPct) ? fmtPct(momPct) : "—";
   momPctEl.className = "kpi-pct-pill " + (momDelta>=0 ? "up":"down");
   momBadge.textContent = (prevTotal>0 || total>0) ? "so với tháng trước" : "Chưa có dữ liệu tháng trước";
 
-  document.getElementById("kpiCount").textContent = entriesFor(month, year, null).length;
+  var count = entriesFor(month, year, null).length;
+  var kpiCountEl = document.getElementById("kpiCount");
+
+  // hiệu ứng số chạy từ 0 — chỉ áp dụng cho lần load trang đầu tiên (animate===true), các lần
+  // đổi tháng/năm sau đó cập nhật số ngay lập tức như trước, tránh gây chậm/khó chịu khi thao tác
+  if(animate){
+    animateCountUp(kpiTotalEl, total, function(v){ return fmtMoney(v); });
+    animateCountUp(ytdValueEl, ytdDelta, function(v){ return (v>=0?"+":"") + fmtMoney(v); });
+    animateCountUp(momValueEl, momDelta, function(v){ return (v>=0?"+":"") + fmtMoney(v); });
+    animateCountUp(kpiCountEl, count, function(v){ return Math.round(v).toLocaleString("vi-VN"); });
+  } else {
+    kpiTotalEl.textContent = fmtMoney(total);
+    ytdValueEl.textContent = (ytdDelta>=0?"+":"") + fmtMoney(ytdDelta);
+    momValueEl.textContent = (momDelta>=0?"+":"") + fmtMoney(momDelta);
+    kpiCountEl.textContent = count;
+  }
 
   renderTotalByMonthChart(year);
   renderAllocationChart(month, year);
@@ -2393,6 +2553,17 @@ function initEntryControls(){
   document.getElementById("listGroup").addEventListener("change", renderEntryTable);
   document.getElementById("entryMonth").addEventListener("change", renderEntryTable);
   document.getElementById("entryYear").addEventListener("change", renderEntryTable);
+
+  document.getElementById("entrySelectAllCb").addEventListener("change", function(e){
+    var checked = e.target.checked;
+    document.querySelectorAll(".entry-row-cb").forEach(function(cb){
+      cb.checked = checked;
+      var id = cb.getAttribute("data-id");
+      if(checked) entrySelectedIds[id] = true; else delete entrySelectedIds[id];
+    });
+    updateEntryBulkBar();
+  });
+  document.getElementById("entryBulkDeleteBtn").addEventListener("click", bulkDeleteSelectedEntries);
 
   document.getElementById("entrySaveBtn").addEventListener("click", saveEntry);
 
@@ -2600,8 +2771,11 @@ function renderGrowthModalBody(){
   });
 
   var tbody = document.getElementById("growthModalBody");
-  tbody.innerHTML = shown.map(growthModalRowHtml).join("");
-  document.getElementById("growthModalEmpty").style.display = shown.length ? "none" : "block";
+  // hiện thông báo trống NGAY TRONG khung cuộn cố định chiều cao (thay vì 1 khối riêng bên
+  // dưới) để chiều cao popup không đổi khi chuyển sang tab không có dòng nào
+  tbody.innerHTML = shown.length
+    ? shown.map(growthModalRowHtml).join("")
+    : '<tr><td colspan="2" style="text-align:center; padding:70px 12px; color:var(--muted); font-size:13px;">Không có khoản nào trong mục này.</td></tr>';
 }
 function openGrowthDetailModal(kind, month, year){
   var baseMonth, baseYear, label;
@@ -2653,6 +2827,29 @@ async function deleteEntry(id){
   saveState();
   renderEntryTable();
 }
+var entrySelectedIds = {};
+function updateEntryBulkBar(){
+  var ids = Object.keys(entrySelectedIds);
+  var btn = document.getElementById("entryBulkDeleteBtn");
+  document.getElementById("entryBulkCount").textContent = ids.length;
+  btn.style.display = ids.length ? "inline-flex" : "none";
+  var allCb = document.getElementById("entrySelectAllCb");
+  var rowCbs = document.querySelectorAll(".entry-row-cb");
+  allCb.checked = rowCbs.length>0 && ids.length===rowCbs.length;
+  allCb.indeterminate = ids.length>0 && ids.length<rowCbs.length;
+}
+async function bulkDeleteSelectedEntries(){
+  var ids = Object.keys(entrySelectedIds);
+  if(!ids.length) return;
+  var ok = await showConfirm({ title:"Xoá "+ids.length+" khoản", message:"Xoá "+ids.length+" khoản đã chọn? Hành động này không thể hoàn tác.", danger:true, confirmText:"Xoá" });
+  if(!ok) return;
+  var idSet = {}; ids.forEach(function(id){ idSet[id]=true; });
+  state.entries = state.entries.filter(function(e){ return !idSet[e.id]; });
+  saveState();
+  entrySelectedIds = {};
+  toast("Đã xoá "+ids.length+" khoản.");
+  renderEntryTable();
+}
 function renderEntryTable(){
   var m = document.getElementById("entryMonth").value;
   var y = document.getElementById("entryYear").value;
@@ -2664,6 +2861,8 @@ function renderEntryTable(){
            e.year===parseInt(y,10) &&
            (g==="all" || eGroupId===g);
   }));
+
+  entrySelectedIds = {};
 
   var subEl = document.getElementById("entryListSub");
   if(subEl){ subEl.textContent = "Tháng "+m+"/"+y; }
@@ -2680,6 +2879,7 @@ function renderEntryTable(){
     var hasNote = !!(e.note && e.note.trim());
     var tr = document.createElement("tr");
     tr.innerHTML =
+      '<td><input type="checkbox" class="entry-row-cb" data-id="'+e.id+'"></td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
       '<td>'+iname+' <span style="color:var(--muted); font-size:11px;">('+MONTH_NAMES[e.month-1]+'/'+e.year+')</span></td>'+
       '<td class="num">'+fmtMoney(e.amount)+'</td>'+
@@ -2696,6 +2896,14 @@ function renderEntryTable(){
   tbody.querySelectorAll("button[data-act='del']").forEach(function(b){
     b.addEventListener("click", function(){ deleteEntry(b.getAttribute("data-id")); });
   });
+  tbody.querySelectorAll(".entry-row-cb").forEach(function(cb){
+    cb.addEventListener("change", function(){
+      var id = cb.getAttribute("data-id");
+      if(cb.checked) entrySelectedIds[id] = true; else delete entrySelectedIds[id];
+      updateEntryBulkBar();
+    });
+  });
+  updateEntryBulkBar();
 
   renderMonthNoteButton();
   renderPrevMonthCompare();
@@ -2708,7 +2916,11 @@ function renderMonthNoteButton(){
   var note = getMonthNote(month, year);
   var preview = document.getElementById("monthNotePreview");
   preview.textContent = note ? (note.length>90 ? note.slice(0,90)+"…" : note) : "Chưa có ghi chú cho tháng này.";
-  document.getElementById("openMonthNoteBtn").textContent = note ? "Sửa ghi chú tháng" : "+ Thêm ghi chú tháng";
+  var noteBtn = document.getElementById("openMonthNoteBtn");
+  noteBtn.textContent = note ? "Sửa ghi chú tháng" : "+ Thêm ghi chú tháng";
+  // khi đã có dữ liệu (đang ở trạng thái "sửa"), dùng style thứ cấp giống nút Xuất/Nhập Excel
+  // để không kéo sự chú ý bằng màu tím nổi bật như lúc chưa có gì (trạng thái "thêm mới")
+  noteBtn.classList.toggle("secondary", !!note);
 }
 var _monthNoteModalCtx = null;
 function openMonthNoteModal(month, year){
@@ -3186,16 +3398,16 @@ function renderYearlyTable(){
     for(var m=1;m<=12;m++){
       var t = totalFor(m, y, g.id);
       html += t
-        ? "<td class='num td-clickable' data-month='"+m+"' data-group='"+g.id+"'>"+(t/1000).toLocaleString("vi-VN")+"</td>"
+        ? "<td class='num td-clickable' data-month='"+m+"' data-group='"+g.id+"'><span class='amt-abbr' data-full=\""+fmtMoney(t)+"\">"+abbreviateMoneyUnit(t)+"</span></td>"
         : "<td class='num'>—</td>";
     }
     html += "</tr>";
   });
-  html += "<tr style='font-weight:700;'><td>Tổng (nghìn đ)</td>";
+  html += "<tr style='font-weight:700;'><td>Tổng</td>";
   for(var m2=1;m2<=12;m2++){
     var tt = totalFor(m2, y, null);
     html += tt
-      ? "<td class='num td-clickable' data-month='"+m2+"' data-group=''>"+(tt/1000).toLocaleString("vi-VN")+"</td>"
+      ? "<td class='num td-clickable' data-month='"+m2+"' data-group=''><span class='amt-abbr' data-full=\""+fmtMoney(tt)+"\">"+abbreviateMoneyUnit(tt)+"</span></td>"
       : "<td class='num'>—</td>";
   }
   html += "</tr></tbody>";
@@ -3207,6 +3419,43 @@ function renderYearlyTable(){
       openDetailView(m, y, gid);
     });
   });
+}
+function itemAmountFor(month, year, itemId){
+  var e = state.entries.find(function(x){ return x.itemId===itemId && x.month===month && x.year===year; });
+  return e ? e.amount : 0;
+}
+function renderYearlyItemTable(){
+  var y = yearlySelectedYear;
+  document.getElementById("yearlyItemYearLabel").textContent = y;
+  var table = document.getElementById("yearlyItemTable");
+  var html = "<thead><tr><th>Khoản</th>";
+  for(var m=1;m<=12;m++) html += "<th class='num'>T"+m+"</th>";
+  html += "</tr></thead><tbody>";
+  var rowCount = 0;
+  state.groups.forEach(function(g){
+    // chỉ liệt kê khoản có ít nhất 1 số liệu trong năm đang xem (kể cả khoản đã ẩn, để không
+    // mất quyền xem lại dữ liệu lịch sử) — tránh bảng dài lê thê với các khoản chưa từng nhập
+    var items = itemsForGroup(g.id).filter(function(it){
+      for(var mm=1; mm<=12; mm++){ if(itemAmountFor(mm, y, it.id)) return true; }
+      return false;
+    });
+    items.forEach(function(it){
+      rowCount++;
+      var color = itemColor(it);
+      html += "<tr><td><span class='group-tag' style='background:"+color+"22; color:"+color+"'><span class='dot-sw' style='background:"+color+"'></span>"+it.name+"</span></td>";
+      for(var m2=1;m2<=12;m2++){
+        var amt = itemAmountFor(m2, y, it.id);
+        html += amt
+          ? "<td class='num'><span class='amt-abbr' data-full=\""+fmtMoney(amt)+"\">"+abbreviateMoneyUnit(amt)+"</span></td>"
+          : "<td class='num'>—</td>";
+      }
+      html += "</tr>";
+    });
+  });
+  html += "</tbody>";
+  table.innerHTML = html;
+  document.getElementById("yearlyItemEmpty").style.display = rowCount ? "none" : "block";
+  table.style.display = rowCount ? "" : "none";
 }
 function renderYearlyGroupCharts(){
   var y = yearlySelectedYear;
@@ -3344,12 +3593,16 @@ function renderYearCompareChart(){
 function renderYearlyPage(){
   renderYearChips();
   renderYearlyTable();
+  renderYearlyItemTable();
   renderYearlyGroupCharts();
   renderYearCompareChips();
   renderYearCompareChart();
 }
 
 /* ================= SEARCH / TRA CỨU PAGE ================= */
+var searchSortKey = null;   // null = mặc định (tháng/năm mới nhất trước)
+var searchSortDir = 1;      // 1 = tăng dần, -1 = giảm dần
+var searchSelectedIds = {}; // reset mỗi lần render lại danh sách — chỉ áp dụng cho trang đang xem
 function initSearchControls(){
   var now = new Date();
   fillMonthSelect(document.getElementById("searchFromMonth"), false);
@@ -3368,16 +3621,59 @@ function initSearchControls(){
   });
   document.getElementById("searchQuery").addEventListener("input", debounce(function(){ renderSearchResults(true); }, 200));
   document.getElementById("searchExportBtn").addEventListener("click", exportSearchResults);
+  document.getElementById("searchBulkExportBtn").addEventListener("click", exportSelectedSearchResults);
+  document.getElementById("searchBulkDeleteBtn").addEventListener("click", bulkDeleteSelectedSearchEntries);
+  document.getElementById("searchSelectAllCb").addEventListener("change", function(e){
+    var checked = e.target.checked;
+    document.querySelectorAll("#searchResultBody .search-row-cb").forEach(function(cb){
+      cb.checked = checked;
+      var id = cb.getAttribute("data-id");
+      if(checked) searchSelectedIds[id] = true; else delete searchSelectedIds[id];
+    });
+    updateSearchBulkBar();
+  });
+  document.querySelectorAll("#page-search th.sortable-th").forEach(function(th){
+    th.addEventListener("click", function(){
+      var key = th.getAttribute("data-sort");
+      if(searchSortKey === key){
+        searchSortDir = -searchSortDir;
+      } else {
+        searchSortKey = key;
+        searchSortDir = (key === "amount" || key === "date") ? -1 : 1; // số tiền/ngày: lớn nhất-mới nhất trước; chữ: A-Z trước
+      }
+      renderSearchResults(true);
+    });
+  });
 
   enhanceSelects(["searchFromMonth","searchFromYear","searchToMonth","searchToYear","searchGroup"]);
+  initSearchEditModal();
 }
 var SEARCH_PAGE_SIZE = 20;
 var searchCurrentPage = 1;
 var _lastSearchResults = [];
-function exportSearchResults(){
-  if(typeof XLSX === "undefined"){ toast("Chưa tải được thư viện Excel — kiểm tra lại kết nối mạng rồi thử lại."); return; }
-  if(!_lastSearchResults.length){ toast("Không có dữ liệu phù hợp để xuất."); return; }
-  var rows = _lastSearchResults.slice().sort(function(a,b){ return (a.year-b.year) || (a.month-b.month); }).map(function(e){
+function searchResultCompare(a, b){
+  if(!searchSortKey) return (b.year-a.year) || (b.month-a.month); // mặc định: mới nhất trước
+  var dir = searchSortDir;
+  if(searchSortKey === "date") return dir * ((a.year*12+a.month) - (b.year*12+b.month));
+  if(searchSortKey === "amount") return dir * (a.amount - b.amount);
+  var itemA = itemById(a.itemId), itemB = itemById(b.itemId);
+  if(searchSortKey === "group"){
+    var groupA = itemA ? groupById(itemA.groupId) : null, groupB = itemB ? groupById(itemB.groupId) : null;
+    return dir * (groupA ? groupA.name : "").localeCompare(groupB ? groupB.name : "");
+  }
+  if(searchSortKey === "item"){
+    return dir * (itemA ? itemA.name : "").localeCompare(itemB ? itemB.name : "");
+  }
+  return 0;
+}
+function exportRowsToExcel(rows, sheetName, filePrefix){
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), sheetName);
+  var d = new Date();
+  XLSX.writeFile(wb, filePrefix+"-"+d.toISOString().slice(0,10)+".xlsx");
+}
+function entriesToExcelRows(list){
+  return list.slice().sort(function(a,b){ return (a.year-b.year) || (a.month-b.month); }).map(function(e){
     var item = itemById(e.itemId);
     var g = item ? groupById(item.groupId) : null;
     return {
@@ -3389,11 +3685,52 @@ function exportSearchResults(){
       "Ghi chú": e.note || ""
     };
   });
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Kết quả tra cứu");
-  var d = new Date();
-  XLSX.writeFile(wb, "tra-cuu-"+d.toISOString().slice(0,10)+".xlsx");
+}
+function exportSearchResults(){
+  if(typeof XLSX === "undefined"){ toast("Chưa tải được thư viện Excel — kiểm tra lại kết nối mạng rồi thử lại."); return; }
+  if(!_lastSearchResults.length){ toast("Không có dữ liệu phù hợp để xuất."); return; }
+  exportRowsToExcel(entriesToExcelRows(_lastSearchResults), "Kết quả tra cứu", "tra-cuu");
+  toast("Đã xuất "+_lastSearchResults.length+" khoản.");
+}
+function exportSelectedSearchResults(){
+  if(typeof XLSX === "undefined"){ toast("Chưa tải được thư viện Excel — kiểm tra lại kết nối mạng rồi thử lại."); return; }
+  var ids = Object.keys(searchSelectedIds);
+  if(!ids.length){ toast("Chưa chọn dòng nào để xuất."); return; }
+  var idSet = {}; ids.forEach(function(id){ idSet[id] = true; });
+  var rows = _lastSearchResults.filter(function(e){ return idSet[e.id]; });
+  exportRowsToExcel(entriesToExcelRows(rows), "Đã chọn", "tra-cuu-da-chon");
   toast("Đã xuất "+rows.length+" khoản.");
+}
+async function deleteSearchEntry(id){
+  var ok = await showConfirm({ title:"Xoá khoản", message:"Xoá khoản này? Hành động này không thể hoàn tác.", danger:true, confirmText:"Xoá" });
+  if(!ok) return;
+  state.entries = state.entries.filter(function(e){ return e.id!==id; });
+  saveState();
+  toast("Đã xoá khoản.");
+  renderSearchResults(false);
+}
+async function bulkDeleteSelectedSearchEntries(){
+  var ids = Object.keys(searchSelectedIds);
+  if(!ids.length) return;
+  var ok = await showConfirm({ title:"Xoá "+ids.length+" khoản", message:"Xoá "+ids.length+" khoản đã chọn? Hành động này không thể hoàn tác.", danger:true, confirmText:"Xoá" });
+  if(!ok) return;
+  var idSet = {}; ids.forEach(function(id){ idSet[id] = true; });
+  state.entries = state.entries.filter(function(e){ return !idSet[e.id]; });
+  saveState();
+  searchSelectedIds = {};
+  toast("Đã xoá "+ids.length+" khoản.");
+  renderSearchResults(false);
+}
+function updateSearchBulkBar(){
+  var ids = Object.keys(searchSelectedIds);
+  document.getElementById("searchBulkCount").textContent = ids.length;
+  document.getElementById("searchBulkExportCount").textContent = ids.length;
+  document.getElementById("searchBulkDeleteBtn").style.display = ids.length ? "inline-flex" : "none";
+  document.getElementById("searchBulkExportBtn").style.display = ids.length ? "inline-flex" : "none";
+  var allCb = document.getElementById("searchSelectAllCb");
+  var rowCbs = document.querySelectorAll("#searchResultBody .search-row-cb");
+  allCb.checked = rowCbs.length>0 && ids.length===rowCbs.length;
+  allCb.indeterminate = ids.length>0 && ids.length<rowCbs.length;
 }
 function renderSearchResults(resetPage){
   var fromMonth = parseInt(document.getElementById("searchFromMonth").value,10);
@@ -3419,11 +3756,24 @@ function renderSearchResults(resetPage){
       if(!nameMatch && !noteMatch) return false;
     }
     return true;
-  }).sort(function(a,b){ return (b.year-a.year) || (b.month-a.month); });
+  }).sort(searchResultCompare);
 
   var total = list.reduce(function(s,e){ return s+e.amount; }, 0);
   document.getElementById("searchResultSub").textContent = list.length + " khoản · Tổng " + fmtMoney(total);
   _lastSearchResults = list;
+  searchSelectedIds = {};
+
+  document.querySelectorAll("#page-search th.sortable-th").forEach(function(th){
+    var key = th.getAttribute("data-sort");
+    var arrow = th.querySelector(".sort-arrow");
+    if(searchSortKey === key){
+      th.classList.add("sort-active");
+      arrow.textContent = searchSortDir===1 ? "▲" : "▼";
+    } else {
+      th.classList.remove("sort-active");
+      arrow.textContent = "";
+    }
+  });
 
   if(resetPage) searchCurrentPage = 1;
   var totalPages = Math.max(1, Math.ceil(list.length / SEARCH_PAGE_SIZE));
@@ -3450,13 +3800,14 @@ function renderSearchResults(resetPage){
     var hasNote = !!(e.note && e.note.trim());
     var tr = document.createElement("tr");
     tr.innerHTML =
+      '<td><input type="checkbox" class="search-row-cb" data-id="'+e.id+'"></td>'+
       '<td class="num">'+(startIdx+idx+1)+'</td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
       '<td>'+iname+'</td>'+
       '<td class="num">'+fmtMoney(e.amount)+'</td>'+
       '<td>'+MONTH_NAMES[e.month-1]+'/'+e.year+'</td>'+
       '<td class="num">'+(hasNote ? '<button class="note-icon-btn" data-act="note" data-id="'+e.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>' : '')+'</td>'+
-      '<td class="num">'+iconBtnHtml({act:"edit", id:e.id, icon:"edit", title:"Sửa"})+'</td>';
+      '<td class="num">'+iconBtnHtml({act:"edit", id:e.id, icon:"edit", title:"Sửa"})+iconBtnHtml({act:"del", id:e.id, icon:"trash", title:"Xoá", extraClass:"del"})+'</td>';
     tbody.appendChild(tr);
   });
   renderSearchPagination(list.length, totalPages);
@@ -3464,8 +3815,19 @@ function renderSearchResults(resetPage){
     b.addEventListener("click", function(){ showNoteModal(b.getAttribute("data-id")); });
   });
   tbody.querySelectorAll("button[data-act='edit']").forEach(function(b){
-    b.addEventListener("click", function(){ jumpToEditEntry(b.getAttribute("data-id")); });
+    b.addEventListener("click", function(){ openSearchEditModal(b.getAttribute("data-id")); });
   });
+  tbody.querySelectorAll("button[data-act='del']").forEach(function(b){
+    b.addEventListener("click", function(){ deleteSearchEntry(b.getAttribute("data-id")); });
+  });
+  tbody.querySelectorAll(".search-row-cb").forEach(function(cb){
+    cb.addEventListener("change", function(){
+      var id = cb.getAttribute("data-id");
+      if(cb.checked) searchSelectedIds[id] = true; else delete searchSelectedIds[id];
+      updateSearchBulkBar();
+    });
+  });
+  updateSearchBulkBar();
 }
 function renderSearchPagination(totalCount, totalPages){
   var wrap = document.getElementById("searchPagination");
@@ -3486,15 +3848,54 @@ function renderSearchPagination(totalCount, totalPages){
   if(prevBtn) prevBtn.addEventListener("click", function(){ searchCurrentPage--; renderSearchResults(false); });
   if(nextBtn) nextBtn.addEventListener("click", function(){ searchCurrentPage++; renderSearchResults(false); });
 }
-function jumpToEditEntry(id){
-  document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("active"); });
-  var entryNav = document.querySelector(".nav-item[data-page='entry']");
-  entryNav.classList.add("active");
-  moveNavIndicator(entryNav);
-  document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
-  document.getElementById("page-entry").classList.add("active");
-  editEntry(id);
-  closeMobileMenu();
+/* ---- Sửa khoản qua popup ngay tại trang Tra cứu (thay vì nhảy sang trang Nhập khoản) ---- */
+var _searchEditId = null;
+function openSearchEditModal(id){
+  var e = state.entries.find(function(x){ return x.id===id; });
+  if(!e) return;
+  var item = itemById(e.itemId);
+  var g = item ? groupById(item.groupId) : null;
+  _searchEditId = id;
+  document.getElementById("searchEditModalContext").textContent = "Nhóm: "+(g?g.name:"—")+" · Khoản: "+(item?item.name+(item.archived?" (đã ẩn)":""):"—");
+  fillMonthSelect(document.getElementById("searchEditMonth"), false);
+  fillYearSelect(document.getElementById("searchEditYear"), false);
+  document.getElementById("searchEditMonth").value = e.month;
+  document.getElementById("searchEditYear").value = e.year;
+  document.getElementById("searchEditAmount").value = e.amount.toLocaleString("vi-VN");
+  document.getElementById("searchEditNote").value = e.note || "";
+  document.getElementById("searchEditModalBackdrop").classList.add("active");
+}
+function initSearchEditModal(){
+  var backdrop = document.getElementById("searchEditModalBackdrop");
+  function close(){ backdrop.classList.remove("active"); _searchEditId = null; }
+  document.getElementById("searchEditCancel").addEventListener("click", close);
+  backdrop.addEventListener("click", function(e){ if(e.target===backdrop) close(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && backdrop.classList.contains("active")) close();
+  });
+  var amountInput = document.getElementById("searchEditAmount");
+  amountInput.addEventListener("input", function(){
+    var cursorFromEnd = this.value.length - this.selectionStart;
+    this.value = formatAmountDigits(this.value);
+    var pos = Math.max(0, this.value.length - cursorFromEnd);
+    this.setSelectionRange(pos,pos);
+  });
+  document.getElementById("searchEditSave").addEventListener("click", function(){
+    if(!_searchEditId) return;
+    var e = state.entries.find(function(x){ return x.id===_searchEditId; });
+    if(!e){ close(); return; }
+    var month = parseInt(document.getElementById("searchEditMonth").value,10);
+    var year = parseInt(document.getElementById("searchEditYear").value,10);
+    var amount = parseAmountInput(document.getElementById("searchEditAmount").value);
+    if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
+    e.month = month; e.year = year; e.amount = amount;
+    e.note = document.getElementById("searchEditNote").value.trim();
+    saveState();
+    close();
+    toast("Đã cập nhật khoản.");
+    renderSearchResults(false);
+  });
+  enhanceSelects(["searchEditMonth","searchEditYear"]);
 }
 
 /* ================= SETTINGS PAGE ================= */
@@ -3570,15 +3971,36 @@ function initSettingsControls(){
   initPasswordChangeUI();
 }
 function initPasswordChangeUI(){
-  var offlineBlock = document.getElementById("pwdInfoOffline");
-  var cloudBlock = document.getElementById("pwdChangeCloud");
+  var offlineInfo = document.getElementById("pwdInfoOffline");
+  var cloudInfo = document.getElementById("pwdInfoCloud");
+  var openBtn = document.getElementById("pwdChangeOpenBtn");
+  var backdrop = document.getElementById("pwdChangeModalBackdrop");
   if(!authConfigured()){
-    offlineBlock.style.display = "block";
-    cloudBlock.style.display = "none";
+    offlineInfo.style.display = "block";
+    cloudInfo.style.display = "none";
+    openBtn.style.display = "none";
     return;
   }
-  offlineBlock.style.display = "none";
-  cloudBlock.style.display = "";
+  offlineInfo.style.display = "none";
+  cloudInfo.style.display = "block";
+  openBtn.style.display = "";
+
+  function closeModal(){
+    backdrop.classList.remove("active");
+    document.getElementById("pwdCurrentInput").value = "";
+    document.getElementById("pwdNewInput").value = "";
+    document.getElementById("pwdNewConfirmInput").value = "";
+  }
+  openBtn.addEventListener("click", function(){
+    backdrop.classList.add("active");
+    setTimeout(function(){ document.getElementById("pwdCurrentInput").focus(); }, 60);
+  });
+  document.getElementById("pwdChangeModalCancel").addEventListener("click", closeModal);
+  backdrop.addEventListener("click", function(e){ if(e.target===backdrop) closeModal(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && backdrop.classList.contains("active")) closeModal();
+  });
+
   document.getElementById("pwdChangeBtn").addEventListener("click", async function(){
     var cur = document.getElementById("pwdCurrentInput").value;
     var next = document.getElementById("pwdNewInput").value;
@@ -3595,10 +4017,8 @@ function initPasswordChangeUI(){
       if(!valid){ toast("Mật khẩu hiện tại không đúng."); return; }
       var res = await sb.auth.updateUser({ password: next });
       if(res.error){ toast("Đổi mật khẩu thất bại: " + res.error.message); return; }
-      document.getElementById("pwdCurrentInput").value = "";
-      document.getElementById("pwdNewInput").value = "";
-      document.getElementById("pwdNewConfirmInput").value = "";
       toast("Đã đổi mật khẩu thành công.");
+      closeModal();
     }catch(e){
       toast("Có lỗi xảy ra, vui lòng thử lại.");
     }finally{
@@ -3878,7 +4298,7 @@ function initApp(){
   initExcelImportModal();
   initMonthNoteModal();
   setPageDate();
-  renderDashboard();
+  renderDashboard(true);
 }
 
 /* ================= LOGIN WIRE-UP ================= */
