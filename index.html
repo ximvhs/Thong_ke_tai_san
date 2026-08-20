@@ -1162,43 +1162,33 @@
         <button class="btn" id="openMonthNoteBtn">+ Thêm ghi chú tháng</button>
       </div>
 
-      <div class="card" style="margin-bottom:16px;">
+      <div class="card">
         <div class="page-header" style="margin-bottom:12px;">
           <div>
-            <h3 style="margin:0;">So sánh với tháng trước</h3>
+            <h3 style="margin:0;">Danh sách khoản — <span id="entryListSub"></span></h3>
             <div class="sub" id="compareSub"></div>
           </div>
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <span class="kpi-pct-pill" id="compareTotalDelta" style="display:none;"></span>
             <button class="btn secondary" id="compareMissingBtn" style="display:none;">Sao chép khoản chưa nhập</button>
-          </div>
-        </div>
-        <div class="table-scroll" id="compareTableWrap">
-          <table>
-            <thead><tr><th>Khoản</th><th>Tình trạng</th><th class="num">Hành động</th></tr></thead>
-            <tbody id="compareTableBody"></tbody>
-          </table>
-        </div>
-        <div class="empty-state" id="compareEmpty" style="display:none;">Tháng trước chưa có dữ liệu để so sánh.</div>
-      </div>
-
-      <div class="card">
-        <div class="page-header" style="margin-bottom:12px;">
-          <div>
-            <h3 style="margin:0;">Danh sách khoản đã nhập</h3>
-            <div class="sub" id="entryListSub" style="font-size:12px;">Theo tháng đang chọn ở form phía trên</div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center;">
             <button class="btn danger" id="entryBulkDeleteBtn" style="display:none; padding:6px 12px; font-size:12px;">Xoá đã chọn (<span id="entryBulkCount">0</span>)</button>
             <select id="listGroup"></select>
           </div>
         </div>
         <div id="entryTotalBox" style="display:none; background:rgba(124,92,255,0.10); border:1px solid var(--accent); border-radius:8px; padding:16px 20px; margin-bottom:16px;">
-          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Tổng cộng</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Tổng cộng tháng này</div>
           <div style="font-size:28px; font-weight:800; letter-spacing:-0.01em; color:var(--text-primary);" id="entryTotalAmount">0 đ</div>
         </div>
         <div class="table-scroll"><table>
-          <thead><tr><th style="width:34px;"><input type="checkbox" id="entrySelectAllCb" title="Chọn tất cả"></th><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
+          <thead><tr>
+            <th style="width:34px;"><input type="checkbox" id="entrySelectAllCb" title="Chọn tất cả"></th>
+            <th>Nhóm</th>
+            <th>Tên khoản</th>
+            <th class="num">Tháng trước</th>
+            <th class="num">Tháng này</th>
+            <th class="num">Ghi chú</th>
+            <th class="num">Thao tác</th>
+          </tr></thead>
           <tbody id="entryTableBody"></tbody>
         </table></div>
         <div class="empty-state" id="entryEmptyState" style="display:none;">Chưa có khoản nào trong tháng này.</div>
@@ -1229,11 +1219,6 @@
       <div class="year-chips" id="yearChips"></div>
 
       <div class="card" style="margin-bottom:16px;">
-        <h3>Tổng tài sản theo tháng — năm <span id="yearlyYearLabel"></span></h3>
-        <div class="table-scroll"><table id="yearlyTable"></table></div>
-      </div>
-
-      <div class="card" style="margin-bottom:16px;">
         <h3>Chi tiết theo khoản theo tháng — năm <span id="yearlyItemYearLabel"></span></h3>
         <div class="table-scroll"><table id="yearlyItemTable"></table></div>
         <div class="empty-state" id="yearlyItemEmpty" style="display:none;">Chưa có khoản nào có dữ liệu trong năm này.</div>
@@ -1243,6 +1228,7 @@
 
       <div class="card">
         <h3>So sánh tổng tài sản giữa các năm</h3>
+        <div class="sub" style="margin-top:-4px; margin-bottom:10px;">Mỗi cột là số dư tháng gần nhất đã nhập của năm đó. Bấm vào cột để xem chi tiết theo Nhóm và Khoản.</div>
         <div class="ms-dropdown" id="yearCompareDropdown">
           <button class="ms-trigger" id="yearCompareTrigger" type="button">
             <span class="ms-trigger-text" id="yearCompareTriggerText">Chọn năm để so sánh</span>
@@ -2168,31 +2154,6 @@ function fillGroupSelect(sel, includeAll, includeCreate){
     sel.appendChild(oc);
   }
 }
-function fillItemSelectForEntry(forceIncludeId){
-  var groupId = document.getElementById("entryGroup").value;
-  var sel = document.getElementById("entryItem");
-  sel.innerHTML = "";
-  var items = itemsForGroup(groupId).filter(function(i){
-    return !i.archived || i.id===forceIncludeId;
-  });
-  if(items.length===0){
-    var ph = document.createElement("option");
-    ph.value = ""; ph.textContent = "Chưa có khoản trong nhóm này";
-    sel.appendChild(ph);
-  } else {
-    var ph2 = document.createElement("option");
-    ph2.value=""; ph2.textContent="-- Chọn khoản --";
-    sel.appendChild(ph2);
-    items.forEach(function(it){
-      var o=document.createElement("option");
-      o.value=it.id; o.textContent = it.name + (it.archived? " (đã ẩn)":"");
-      sel.appendChild(o);
-    });
-  }
-  var oc=document.createElement("option");
-  oc.value="__create__"; oc.textContent="+ Thêm khoản mới…";
-  sel.appendChild(oc);
-}
 
 /* ================= CUSTOM DROPDOWN (progressively enhances native <select>) ================= */
 function enhanceSelect(selectEl){
@@ -2552,6 +2513,31 @@ function renderGroupBreakdownTable(month, year){
 }
 
 /* ================= ENTRY PAGE ================= */
+function fillItemSelectForEntry(forceIncludeId){
+  var groupId = document.getElementById("entryGroup").value;
+  var sel = document.getElementById("entryItem");
+  sel.innerHTML = "";
+  var items = itemsForGroup(groupId).filter(function(i){
+    return !i.archived || i.id===forceIncludeId;
+  });
+  if(items.length===0){
+    var ph = document.createElement("option");
+    ph.value = ""; ph.textContent = "Chưa có khoản trong nhóm này";
+    sel.appendChild(ph);
+  } else {
+    var ph2 = document.createElement("option");
+    ph2.value=""; ph2.textContent="-- Chọn khoản --";
+    sel.appendChild(ph2);
+    items.forEach(function(it){
+      var o=document.createElement("option");
+      o.value=it.id; o.textContent = it.name + (it.archived? " (đã ẩn)":"");
+      sel.appendChild(o);
+    });
+  }
+  var oc=document.createElement("option");
+  oc.value="__create__"; oc.textContent="+ Thêm khoản mới…";
+  sel.appendChild(oc);
+}
 function initEntryControls(){
   var now = new Date();
   fillMonthSelect(document.getElementById("entryMonth"), false);
@@ -2668,6 +2654,21 @@ function editEntry(id){
   editingEntryId = id;
   document.getElementById("entrySaveBtn").textContent = "Cập nhật khoản";
   renderEntryTable();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function copyPrevEntryToForm(prevEntryId){
+  var pe = state.entries.find(function(x){ return x.id===prevEntryId; });
+  if(!pe) return;
+  var item = itemById(pe.itemId);
+  if(!item){ toast("Khoản này không còn tồn tại."); return; }
+  editingEntryId = null;
+  document.getElementById("entrySaveBtn").textContent = "+ Thêm khoản";
+  document.getElementById("entryGroup").value = item.groupId;
+  fillItemSelectForEntry(item.id);
+  document.getElementById("entryItem").value = item.id;
+  document.getElementById("entryAmount").value = pe.amount.toLocaleString("vi-VN");
+  document.getElementById("entryNote").value = pe.note || "";
+  toast("Đã sao chép từ tháng trước — kiểm tra lại số tiền rồi bấm Lưu.");
   window.scrollTo({top:0, behavior:"smooth"});
 }
 function showNoteModal(entryId){
@@ -2896,28 +2897,85 @@ async function bulkDeleteSelectedEntries(){
   renderEntryTable();
 }
 function renderEntryTable(){
-  var m = document.getElementById("entryMonth").value;
-  var y = document.getElementById("entryYear").value;
+  var m = parseInt(document.getElementById("entryMonth").value,10);
+  var y = parseInt(document.getElementById("entryYear").value,10);
   var g = document.getElementById("listGroup").value;
-  var list = sortEntriesByGroupItemAmount(state.entries.filter(function(e){
-    var item = itemById(e.itemId);
-    var eGroupId = item ? item.groupId : null;
-    return e.month===parseInt(m,10) &&
-           e.year===parseInt(y,10) &&
-           (g==="all" || eGroupId===g);
-  }));
+  var prevMonth = m===1 ? 12 : m-1;
+  var prevYear = m===1 ? y-1 : y;
 
   entrySelectedIds = {};
 
   var subEl = document.getElementById("entryListSub");
   if(subEl){ subEl.textContent = "Tháng "+m+"/"+y; }
+  document.getElementById("compareSub").textContent = "So với " + MONTH_NAMES[prevMonth-1] + "/" + prevYear;
 
-  // Calculate and display total
+  var curByItem = {}; entriesFor(m, y, null).forEach(function(e){ curByItem[e.itemId] = e; });
+  var prevByItem = {}; entriesFor(prevMonth, prevYear, null).forEach(function(e){ prevByItem[e.itemId] = e; });
+
+  // KPI-style pill so the whole-month delta is visible without opening the list —
+  // always computed across every group regardless of the "Lọc theo nhóm" filter below.
+  var curTotalAll = totalFor(m, y, null);
+  var prevTotalAll = totalFor(prevMonth, prevYear, null);
+  var totalDeltaEl = document.getElementById("compareTotalDelta");
+  if(curTotalAll>0 || prevTotalAll>0){
+    var deltaAll = curTotalAll - prevTotalAll;
+    var pctAll = prevTotalAll>0 ? (deltaAll/prevTotalAll*100) : (curTotalAll>0 ? Infinity : 0);
+    totalDeltaEl.textContent = (deltaAll>=0?"+":"") + fmtMoney(deltaAll) + (isFinite(pctAll) ? " (" + fmtPct(pctAll) + ")" : "");
+    totalDeltaEl.className = "kpi-pct-pill " + (deltaAll>=0 ? "up":"down");
+    totalDeltaEl.style.display = "";
+  } else {
+    totalDeltaEl.style.display = "none";
+  }
+
+  // Gộp bảng "So sánh với tháng trước" cũ vào bảng "Danh sách khoản đã nhập" cũ: mỗi dòng ở
+  // đây là hợp (union) của khoản có số liệu tháng trước VÀ/HOẶC khoản có số liệu tháng này —
+  // vẫn nhập liệu qua form phía trên như cũ, bảng này chỉ để xem — nhìn "Tháng trước" ngay
+  // cạnh "Tháng này" để đối chiếu, đúng thói quen làm việc trên Excel của user.
+  var rowsMap = {};
+  Object.keys(prevByItem).forEach(function(itemId){
+    var item = itemById(itemId);
+    if(!item || item.archived) return;
+    if(g!=="all" && item.groupId!==g) return;
+    rowsMap[itemId] = { item: item, pe: prevByItem[itemId], ce: curByItem[itemId]||null };
+  });
+  Object.keys(curByItem).forEach(function(itemId){
+    if(rowsMap[itemId]) return;
+    var item = itemById(itemId);
+    if(!item) return;
+    if(g!=="all" && item.groupId!==g) return;
+    rowsMap[itemId] = { item: item, pe: prevByItem[itemId]||null, ce: curByItem[itemId] };
+  });
+
+  function sortRows(list){
+    list.sort(function(a,b){
+      var gA = groupById(a.item.groupId), gB = groupById(b.item.groupId);
+      var gNameA = gA?gA.name:"", gNameB = gB?gB.name:"";
+      return gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
+    });
+  }
+  // khoản có số liệu tháng trước xếp trước (đây là danh sách "nhìn tháng trước để nhập");
+  // khoản chỉ có số liệu tháng này (mới nhập, tháng trước chưa dùng) gộp chung ở dưới cùng.
+  var withPrev = [], withoutPrev = [];
+  Object.keys(rowsMap).forEach(function(itemId){
+    var row = rowsMap[itemId];
+    if(row.pe) withPrev.push(row); else withoutPrev.push(row);
+  });
+  sortRows(withPrev);
+  sortRows(withoutPrev);
+
+  var missingCount = withPrev.filter(function(r){ return !r.ce; }).length;
+  var missingBtn = document.getElementById("compareMissingBtn");
+  missingBtn.style.display = missingCount ? "inline-flex" : "none";
+  missingBtn.textContent = "Sao chép "+missingCount+" khoản chưa nhập";
+
+  var allRows = withPrev.concat(withoutPrev);
+  document.getElementById("entryEmptyState").style.display = allRows.length ? "none" : "block";
+
   var totalAmount = 0;
-  list.forEach(function(e){ totalAmount += e.amount; });
+  allRows.forEach(function(r){ if(r.ce) totalAmount += r.ce.amount; });
   var totalBox = document.getElementById("entryTotalBox");
   var totalDisplay = document.getElementById("entryTotalAmount");
-  if(list.length > 0){
+  if(withoutPrev.concat(withPrev).some(function(r){ return r.ce; })){
     totalBox.style.display = "block";
     totalDisplay.textContent = fmtMoney(totalAmount);
   } else {
@@ -2925,25 +2983,50 @@ function renderEntryTable(){
   }
 
   var tbody = document.getElementById("entryTableBody");
-  tbody.innerHTML = "";
-  document.getElementById("entryEmptyState").style.display = list.length ? "none" : "block";
-  list.forEach(function(e){
-    var item = itemById(e.itemId);
-    var g2 = item ? groupById(item.groupId) : null;
-    var color = itemColor(item);
+
+  function buildRowHtml(r){
+    var it = r.item, pe = r.pe, ce = r.ce;
+    var g2 = groupById(it.groupId);
+    var color = itemColor(it);
     var gname = g2 ? g2.name : "(đã xoá)";
-    var iname = item ? (item.name + (item.archived ? " (đã ẩn)":"")) : "(đã xoá)";
-    var hasNote = !!(e.note && e.note.trim());
-    var tr = document.createElement("tr");
-    tr.innerHTML =
-      '<td><input type="checkbox" class="entry-row-cb" data-id="'+e.id+'"></td>'+
+    var iname = it.name + (it.archived ? " (đã ẩn)":"");
+    var hasNote = !!(ce && ce.note && ce.note.trim());
+    var curCellHtml, actionHtml;
+    if(!ce){
+      curCellHtml = pe ? '<span class="compare-status-missing">Chưa nhập tháng này</span>' : '<span style="color:var(--muted);">Chưa nhập</span>';
+      actionHtml = pe ? iconBtnHtml({act:"copy", id:pe.id, icon:"copy", title:"Sao chép từ tháng trước"}) : '';
+    } else if(pe && pe.amount !== ce.amount){
+      var delta = ce.amount - pe.amount;
+      var deltaClass = delta>=0 ? "compare-delta-up" : "compare-delta-down";
+      curCellHtml = fmtMoney(ce.amount) + ' <span class="'+deltaClass+'" style="font-size:11px;">('+(delta>=0?"+":"")+fmtMoney(delta)+')</span>';
+      actionHtml = iconBtnHtml({act:"edit", id:ce.id, icon:"edit", title:"Sửa"});
+    } else {
+      curCellHtml = fmtMoney(ce.amount) + (pe ? ' <span class="compare-status-same" style="font-size:11px;">(giống tháng trước)</span>' : '');
+      actionHtml = iconBtnHtml({act:"edit", id:ce.id, icon:"edit", title:"Sửa"});
+    }
+    var noteBtn = ce
+      ? '<button class="note-icon-btn" data-act="note" data-id="'+ce.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>'
+      : '';
+    var delBtn = ce ? iconBtnHtml({act:"del", id:ce.id, icon:"trash", title:"Xoá", extraClass:"del"}) : '';
+    return '<tr>'+
+      '<td>'+(ce ? '<input type="checkbox" class="entry-row-cb" data-id="'+ce.id+'">' : '')+'</td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
-      '<td>'+iname+' <span style="color:var(--muted); font-size:11px;">('+MONTH_NAMES[e.month-1]+'/'+e.year+')</span></td>'+
-      '<td class="num">'+fmtMoney(e.amount)+'</td>'+
-      '<td class="num">'+(hasNote ? '<button class="note-icon-btn" data-act="note" data-id="'+e.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>' : '')+'</td>'+
-      '<td class="num">'+iconBtnHtml({act:"edit", id:e.id, icon:"edit", title:"Sửa"})+iconBtnHtml({act:"del", id:e.id, icon:"trash", title:"Xoá", extraClass:"del"})+'</td>';
-    tbody.appendChild(tr);
-  });
+      '<td>'+iname+'</td>'+
+      '<td class="num" style="color:var(--muted);">'+(pe ? fmtMoney(pe.amount) : "—")+'</td>'+
+      '<td class="num">'+curCellHtml+'</td>'+
+      '<td class="num">'+noteBtn+'</td>'+
+      '<td class="num">'+actionHtml+delBtn+'</td>'+
+    '</tr>';
+  }
+
+  var html = "";
+  withPrev.forEach(function(r){ html += buildRowHtml(r); });
+  if(withoutPrev.length){
+    html += '<tr class="entry-section-header"><td colspan="7" style="background:var(--surface-2); font-weight:700; color:var(--accent); padding-top:12px; padding-bottom:12px; border-top:1px solid var(--border);">Khoản mới tháng này (chưa có ở tháng trước)</td></tr>';
+    withoutPrev.forEach(function(r){ html += buildRowHtml(r); });
+  }
+  tbody.innerHTML = html;
+
   tbody.querySelectorAll("button[data-act='note']").forEach(function(b){
     b.addEventListener("click", function(){ showNoteModal(b.getAttribute("data-id")); });
   });
@@ -2952,6 +3035,9 @@ function renderEntryTable(){
   });
   tbody.querySelectorAll("button[data-act='del']").forEach(function(b){
     b.addEventListener("click", function(){ deleteEntry(b.getAttribute("data-id")); });
+  });
+  tbody.querySelectorAll("button[data-act='copy']").forEach(function(b){
+    b.addEventListener("click", function(){ copyPrevEntryToForm(b.getAttribute("data-id")); });
   });
   tbody.querySelectorAll(".entry-row-cb").forEach(function(cb){
     cb.addEventListener("change", function(){
@@ -2963,7 +3049,6 @@ function renderEntryTable(){
   updateEntryBulkBar();
 
   renderMonthNoteButton();
-  renderPrevMonthCompare();
 }
 
 /* ================= GHI CHÚ TỔNG QUAN THEO THÁNG (popup dùng chung) ================= */
@@ -3017,22 +3102,7 @@ function initMonthNoteModal(){
   });
 }
 
-/* ================= SO SÁNH VỚI THÁNG TRƯỚC ================= */
-function copyPrevEntryToForm(prevEntryId){
-  var pe = state.entries.find(function(x){ return x.id===prevEntryId; });
-  if(!pe) return;
-  var item = itemById(pe.itemId);
-  if(!item){ toast("Khoản này không còn tồn tại."); return; }
-  editingEntryId = null;
-  document.getElementById("entrySaveBtn").textContent = "+ Thêm khoản";
-  document.getElementById("entryGroup").value = item.groupId;
-  fillItemSelectForEntry(item.id);
-  document.getElementById("entryItem").value = item.id;
-  document.getElementById("entryAmount").value = pe.amount.toLocaleString("vi-VN");
-  document.getElementById("entryNote").value = pe.note || "";
-  toast("Đã sao chép từ tháng trước — kiểm tra lại số tiền rồi bấm Lưu.");
-  window.scrollTo({top:0, behavior:"smooth"});
-}
+/* ================= SO SÁNH VỚI THÁNG TRƯỚC (bulk copy — dùng chung với bảng nhập khoản) ================= */
 async function copyAllMissingFromPrevMonth(){
   var month = parseInt(document.getElementById("entryMonth").value,10);
   var year = parseInt(document.getElementById("entryYear").value,10);
@@ -3059,85 +3129,6 @@ async function copyAllMissingFromPrevMonth(){
   renderEntryTable();
   refreshSelectorsThatDependOnYears();
 }
-function renderPrevMonthCompare(){
-  var month = parseInt(document.getElementById("entryMonth").value,10);
-  var year = parseInt(document.getElementById("entryYear").value,10);
-  var prevMonth = month===1 ? 12 : month-1;
-  var prevYear = month===1 ? year-1 : year;
-  document.getElementById("compareSub").textContent = "So với " + MONTH_NAMES[prevMonth-1] + "/" + prevYear;
-
-  var curTotal = totalFor(month, year, null);
-  var prevTotalAll = totalFor(prevMonth, prevYear, null);
-  var totalDeltaEl = document.getElementById("compareTotalDelta");
-  if(curTotal>0 || prevTotalAll>0){
-    var deltaAll = curTotal - prevTotalAll;
-    var pctAll = prevTotalAll>0 ? (deltaAll/prevTotalAll*100) : (curTotal>0 ? Infinity : 0);
-    totalDeltaEl.textContent = (deltaAll>=0?"+":"") + fmtMoney(deltaAll) + (isFinite(pctAll) ? " (" + fmtPct(pctAll) + ")" : "");
-    totalDeltaEl.className = "kpi-pct-pill " + (deltaAll>=0 ? "up":"down");
-    totalDeltaEl.style.display = "";
-  } else {
-    totalDeltaEl.style.display = "none";
-  }
-
-  var curByItem = {};
-  entriesFor(month, year, null).forEach(function(e){ curByItem[e.itemId] = e; });
-
-  var rows = entriesFor(prevMonth, prevYear, null).map(function(pe){
-    var item = itemById(pe.itemId);
-    if(!item || item.archived) return null;
-    var ce = curByItem[pe.itemId];
-    var status = !ce ? "missing" : (ce.amount===pe.amount ? "same" : "changed");
-    return { item: item, pe: pe, ce: ce, status: status };
-  }).filter(Boolean);
-
-  // group first, then item name within the group, so the whole table reads the same way as
-  // every other "danh sách khoản" view — status (missing/changed/same) no longer splits a
-  // group's items apart into separate blocks, it's just shown per-row via color/text.
-  rows.sort(function(a,b){
-    var gA = groupById(a.item.groupId), gB = groupById(b.item.groupId);
-    var gNameA = gA ? gA.name : "", gNameB = gB ? gB.name : "";
-    return gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
-  });
-
-  var missingCount = rows.filter(function(r){ return r.status==="missing"; }).length;
-  var missingBtn = document.getElementById("compareMissingBtn");
-  missingBtn.style.display = missingCount ? "inline-flex" : "none";
-  missingBtn.textContent = "Sao chép "+missingCount+" khoản chưa nhập";
-
-  document.getElementById("compareTableWrap").style.display = rows.length ? "" : "none";
-  document.getElementById("compareEmpty").style.display = rows.length ? "none" : "block";
-
-  var tbody = document.getElementById("compareTableBody");
-  tbody.innerHTML = "";
-  rows.forEach(function(r){
-    var g = groupById(r.item.groupId);
-    var color = itemColor(r.item);
-    var nameCell = '<span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+(g?g.name:"—")+'</span> '+r.item.name;
-    var statusCell, actionCell;
-    if(r.status==="missing"){
-      statusCell = '<span class="compare-status-missing">Chưa nhập tháng này (tháng trước: '+fmtMoney(r.pe.amount)+')</span>';
-      actionCell = iconBtnHtml({act:"copy", id:r.pe.id, icon:"copy", title:"Sao chép từ tháng trước"});
-    } else if(r.status==="changed"){
-      var delta = r.ce.amount - r.pe.amount;
-      var deltaClass = delta>=0 ? "compare-delta-up" : "compare-delta-down";
-      statusCell = '<span class="compare-status-changed">'+fmtMoney(r.pe.amount)+' → '+fmtMoney(r.ce.amount)+' <span class="'+deltaClass+'">('+(delta>=0?"+":"")+fmtMoney(delta)+')</span></span>';
-      actionCell = iconBtnHtml({act:"edit", id:r.ce.id, icon:"edit", title:"Sửa"});
-    } else {
-      statusCell = '<span class="compare-status-same">Giống tháng trước ('+fmtMoney(r.pe.amount)+')</span>';
-      actionCell = "";
-    }
-    var tr = document.createElement("tr");
-    tr.innerHTML = '<td>'+nameCell+'</td><td>'+statusCell+'</td><td class="num">'+actionCell+'</td>';
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll("[data-act='copy']").forEach(function(b){
-    b.addEventListener("click", function(){ copyPrevEntryToForm(b.getAttribute("data-id")); });
-  });
-  tbody.querySelectorAll("[data-act='edit']").forEach(function(b){
-    b.addEventListener("click", function(){ editEntry(b.getAttribute("data-id")); });
-  });
-}
-
 /* ================= GROUP MODAL ================= */
 function openGroupModal(onSave){
   var backdrop = document.getElementById("groupModalBackdrop");
@@ -3487,40 +3478,6 @@ function renderYearChips(){
     wrap.appendChild(chip);
   });
 }
-function renderYearlyTable(){
-  var y = yearlySelectedYear;
-  document.getElementById("yearlyYearLabel").textContent = y;
-  var table = document.getElementById("yearlyTable");
-  var html = "<thead><tr><th>Nhóm</th>";
-  for(var m=1;m<=12;m++) html += "<th class='num'>T"+m+"</th>";
-  html += "</tr></thead><tbody>";
-  state.groups.forEach(function(g){
-    html += "<tr><td><span style='color:"+slotColor(g.colorIdx)+"; font-weight:600;'>"+g.name+"</span></td>";
-    for(var m=1;m<=12;m++){
-      var t = totalFor(m, y, g.id);
-      html += t
-        ? "<td class='num td-clickable' data-month='"+m+"' data-group='"+g.id+"'><span class='amt-abbr' data-full=\""+fmtMoney(t)+"\">"+abbreviateMoneyUnit(t)+"</span></td>"
-        : "<td class='num'>—</td>";
-    }
-    html += "</tr>";
-  });
-  html += "<tr style='font-weight:700;'><td>Tổng</td>";
-  for(var m2=1;m2<=12;m2++){
-    var tt = totalFor(m2, y, null);
-    html += tt
-      ? "<td class='num td-clickable' data-month='"+m2+"' data-group=''><span class='amt-abbr' data-full=\""+fmtMoney(tt)+"\">"+abbreviateMoneyUnit(tt)+"</span></td>"
-      : "<td class='num'>—</td>";
-  }
-  html += "</tr></tbody>";
-  table.innerHTML = html;
-  table.querySelectorAll(".td-clickable").forEach(function(td){
-    td.addEventListener("click", function(){
-      var m = parseInt(td.getAttribute("data-month"),10);
-      var gid = td.getAttribute("data-group") || null;
-      openDetailView(m, y, gid);
-    });
-  });
-}
 function itemEntryFor(month, year, itemId){
   return state.entries.find(function(x){ return x.itemId===itemId && x.month===month && x.year===year; }) || null;
 }
@@ -3528,6 +3485,9 @@ function itemAmountFor(month, year, itemId){
   var e = itemEntryFor(month, year, itemId);
   return e ? e.amount : 0;
 }
+/* Bảng gộp: mỗi khoản hiển thị dưới 1 hàng-tiêu-đề Nhóm (để biết khoản thuộc nhóm nào),
+   sau các khoản của 1 nhóm là hàng "Tổng {nhóm}", và cuối bảng là hàng "Tổng tất cả" —
+   gộp thay cho 2 bảng "Tổng tài sản theo tháng" + "Chi tiết theo khoản theo tháng" trước đây. */
 function renderYearlyItemTable(){
   var y = yearlySelectedYear;
   document.getElementById("yearlyItemYearLabel").textContent = y;
@@ -3543,10 +3503,13 @@ function renderYearlyItemTable(){
       for(var mm=1; mm<=12; mm++){ if(itemAmountFor(mm, y, it.id)) return true; }
       return false;
     });
+    if(!items.length) return; // nhóm không có dữ liệu trong năm này -> bỏ qua, không tạo hàng trống
+    var gcolor = slotColor(g.colorIdx);
+    html += "<tr class='yit-group-head'><td colspan='13' style=\"background:var(--surface-2); font-weight:700; color:"+gcolor+"; padding-top:10px; padding-bottom:10px; border-top:1px solid var(--border);\">"+g.name+"</td></tr>";
     items.forEach(function(it){
       rowCount++;
       var color = itemColor(it);
-      html += "<tr><td><span class='group-tag' style='background:"+color+"22; color:"+color+"'><span class='dot-sw' style='background:"+color+"'></span>"+it.name+"</span></td>";
+      html += "<tr><td style='padding-left:24px;'><span class='group-tag' style='background:"+color+"22; color:"+color+"'><span class='dot-sw' style='background:"+color+"'></span>"+it.name+"</span></td>";
       for(var m2=1;m2<=12;m2++){
         var ent = itemEntryFor(m2, y, it.id);
         var amt = ent ? ent.amount : 0;
@@ -3565,13 +3528,38 @@ function renderYearlyItemTable(){
       }
       html += "</tr>";
     });
+    html += "<tr class='yit-subtotal-row' style='font-weight:700;'><td>Tổng "+g.name+"</td>";
+    for(var m3=1;m3<=12;m3++){
+      var gt = totalFor(m3, y, g.id);
+      html += gt
+        ? "<td class='num td-clickable' data-month='"+m3+"' data-group='"+g.id+"'><span class='amt-abbr' data-full=\""+fmtMoney(gt)+"\">"+abbreviateMoneyUnit(gt)+"</span></td>"
+        : "<td class='num'>—</td>";
+    }
+    html += "</tr>";
   });
+  if(rowCount){
+    html += "<tr class='yit-grandtotal-row' style='font-weight:800; background:var(--surface-2);'><td>Tổng tất cả</td>";
+    for(var m4=1;m4<=12;m4++){
+      var tt = totalFor(m4, y, null);
+      html += tt
+        ? "<td class='num td-clickable' data-month='"+m4+"' data-group=''><span class='amt-abbr' data-full=\""+fmtMoney(tt)+"\">"+abbreviateMoneyUnit(tt)+"</span></td>"
+        : "<td class='num'>—</td>";
+    }
+    html += "</tr>";
+  }
   html += "</tbody>";
   table.innerHTML = html;
   table.querySelectorAll("td[data-act='note']").forEach(function(td){
     td.addEventListener("click", function(){ showNoteModal(td.getAttribute("data-id")); });
     td.addEventListener("keydown", function(e){
       if(e.key==="Enter" || e.key===" "){ e.preventDefault(); showNoteModal(td.getAttribute("data-id")); }
+    });
+  });
+  table.querySelectorAll(".td-clickable").forEach(function(td){
+    td.addEventListener("click", function(){
+      var m = parseInt(td.getAttribute("data-month"),10);
+      var gid = td.getAttribute("data-group") || null;
+      openDetailView(m, y, gid);
     });
   });
   document.getElementById("yearlyItemEmpty").style.display = rowCount ? "none" : "block";
@@ -3673,37 +3661,57 @@ function initYearCompareDropdown(){
     if(!dropdown.contains(e.target)) dropdown.classList.remove("open");
   });
 }
+/* Tháng gần nhất (trong năm y) có ít nhất 1 khoản đã nhập — dùng làm mốc "chốt số" của năm đó
+   cho biểu đồ so sánh giữa các năm (cột) và cho phần xem chi tiết khi bấm vào cột. */
+function lastMonthWithDataInYear(year){
+  var best = 0;
+  state.entries.forEach(function(e){
+    if(e.year===year && e.month>best) best = e.month;
+  });
+  return best || null;
+}
 function renderYearCompareChart(){
   var colors = baseChartColors();
-  var ys = yearsInData().filter(function(y){ return yearlyCompareYears[y]; });
-  var datasets = ys.map(function(y, idx){
-    var data = [];
-    for(var m=1;m<=12;m++){ data.push(totalFor(m,y,null)); }
-    var origIdx = yearsInData().indexOf(y);
-    return {
-      label: "Năm "+y,
-      data: data,
-      borderColor: slotColor(origIdx),
-      backgroundColor: slotColor(origIdx),
-      tension: 0.25,
-      pointRadius: 3,
-      borderWidth: 2,
-      spanGaps: true
-    };
-  });
+  var allYears = yearsInData();
+  var ys = allYears.filter(function(y){ return yearlyCompareYears[y]; });
+  var lastMonths = ys.map(function(y){ return lastMonthWithDataInYear(y); });
+  var data = ys.map(function(y, idx){ var lm = lastMonths[idx]; return lm ? totalFor(lm, y, null) : 0; });
+  var bg = ys.map(function(y){ return slotColor(allYears.indexOf(y)); });
   var ctx = document.getElementById("chartYearCompare").getContext("2d");
   destroyChart("yearCompare");
   charts.yearCompare = new Chart(ctx, {
-    type:"line",
-    data:{ labels: MONTH_NAMES, datasets: datasets },
+    type:"bar",
+    data:{
+      labels: ys.map(function(y){ return "Năm "+y; }),
+      datasets: [{ data: data, backgroundColor: bg, borderRadius:6, maxBarThickness:64 }]
+    },
     options:{
       responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ top:22 } },
+      onClick: function(evt, elements){
+        if(!elements.length) return;
+        var idx = elements[0].index;
+        var y = ys[idx], lm = lastMonths[idx];
+        if(lm) openDetailView(lm, y, null);
+      },
+      onHover: function(evt, elements){
+        evt.native.target.style.cursor = elements.length ? "pointer" : "default";
+      },
       plugins:{
-        legend:{ display: datasets.length>1, position:"bottom", labels:{ color: colors.text, font:{size:11.5}, usePointStyle:true, pointStyle:"circle" } },
-        tooltip:{ callbacks:{ label:function(ctx){ return ctx.dataset.label+": "+fmtMoney(ctx.parsed.y); } } }
+        legend:{ display:false },
+        tooltip:{
+          callbacks:{
+            title: function(items){
+              var idx = items[0].dataIndex;
+              var lm = lastMonths[idx];
+              return items[0].label + (lm ? " (tính đến "+MONTH_NAMES[lm-1].toLowerCase()+")" : "");
+            },
+            label: function(ctx2){ return fmtMoney(ctx2.parsed.y); }
+          }
+        }
       },
       scales:{
-        x:{ grid:{display:false}, ticks:{ color: colors.text, font:{size:11} } },
+        x:{ grid:{display:false}, ticks:{ color: colors.text, font:{size:11.5, weight:"600"} } },
         y:{ grid:{color:colors.grid}, ticks:{ color: colors.text, font:{size:11},
             callback:function(v){ return (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
       }
@@ -3712,7 +3720,6 @@ function renderYearCompareChart(){
 }
 function renderYearlyPage(){
   renderYearChips();
-  renderYearlyTable();
   renderYearlyItemTable();
   renderYearlyGroupCharts();
   renderYearCompareChips();
