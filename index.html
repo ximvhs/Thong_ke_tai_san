@@ -1193,6 +1193,10 @@
             <select id="listGroup"></select>
           </div>
         </div>
+        <div id="entryTotalBox" style="display:none; background:rgba(124,92,255,0.10); border:1px solid var(--accent); border-radius:8px; padding:16px 20px; margin-bottom:16px;">
+          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Tổng cộng</div>
+          <div style="font-size:28px; font-weight:800; letter-spacing:-0.01em; color:var(--text-primary);" id="entryTotalAmount">0 đ</div>
+        </div>
         <div class="table-scroll"><table>
           <thead><tr><th style="width:34px;"><input type="checkbox" id="entrySelectAllCb" title="Chọn tất cả"></th><th>Nhóm</th><th>Tên khoản</th><th class="num">Số tiền</th><th class="num">Ghi chú</th><th class="num">Thao tác</th></tr></thead>
           <tbody id="entryTableBody"></tbody>
@@ -2907,6 +2911,18 @@ function renderEntryTable(){
 
   var subEl = document.getElementById("entryListSub");
   if(subEl){ subEl.textContent = "Tháng "+m+"/"+y; }
+
+  // Calculate and display total
+  var totalAmount = 0;
+  list.forEach(function(e){ totalAmount += e.amount; });
+  var totalBox = document.getElementById("entryTotalBox");
+  var totalDisplay = document.getElementById("entryTotalAmount");
+  if(list.length > 0){
+    totalBox.style.display = "block";
+    totalDisplay.textContent = fmtMoney(totalAmount);
+  } else {
+    totalBox.style.display = "none";
+  }
 
   var tbody = document.getElementById("entryTableBody");
   tbody.innerHTML = "";
