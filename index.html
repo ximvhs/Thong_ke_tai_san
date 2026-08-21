@@ -791,6 +791,14 @@
     display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px;
     vertical-align:middle; border:1px solid rgba(255,255,255,0.25);
   }
+  .item-unit-badge{
+    display:inline-block; font-size:10.5px; font-weight:600; color:var(--accent);
+    background:rgba(124,92,255,0.14); border-radius:5px; padding:1px 6px; margin-left:6px;
+    vertical-align:middle;
+  }
+  .qty-sub-detail{
+    display:block; font-size:11px; color:var(--text-secondary); font-weight:400; margin-top:1px;
+  }
   /* drag-to-reorder rows in item management table */
   .drag-handle-cell{ width:26px; cursor:grab; color:var(--muted); }
   .drag-handle-cell:active{ cursor:grabbing; }
@@ -1211,12 +1219,27 @@
             <label>Khoản</label>
             <select id="entryItem"></select>
           </div>
-          <div class="form-field">
+          <div class="form-field" id="entryAmountFieldWrap">
             <label>Số tiền</label>
             <div class="amount-field">
               <input type="text" id="entryAmount" class="field-input" placeholder="0" inputmode="numeric">
               <span class="suffix">đ</span>
             </div>
+          </div>
+          <div class="form-field" id="entryQtyFieldWrap" style="display:none;">
+            <label id="entryQtyLabel">Số lượng</label>
+            <input type="text" id="entryQty" class="field-input" placeholder="0" inputmode="decimal" style="width:100px;">
+          </div>
+          <div class="form-field" id="entryUnitPriceFieldWrap" style="display:none;">
+            <label>Đơn giá / đơn vị</label>
+            <div class="amount-field">
+              <input type="text" id="entryUnitPrice" class="field-input" placeholder="0" inputmode="numeric">
+              <span class="suffix">đ</span>
+            </div>
+          </div>
+          <div class="form-field" id="entryQtyTotalWrap" style="display:none;">
+            <label>Thành tiền</label>
+            <div class="field-input" id="entryQtyTotalDisplay" style="background:var(--surface-2); display:flex; align-items:center; min-height:20px;">0 đ</div>
           </div>
           <div class="form-field" style="flex:1 1 220px;">
             <label>Ghi chú (không bắt buộc)</label>
@@ -1575,6 +1598,7 @@
     <div class="form-field">
       <label>Số tiền</label>
       <input type="text" id="searchEditAmount" inputmode="numeric">
+      <div id="searchEditQtyNote" style="display:none; font-size:11.5px; color:var(--text-secondary); margin-top:4px;">Khoản này tính theo số lượng × đơn giá — sửa số tiền trực tiếp ở đây sẽ bỏ chi tiết số lượng/đơn giá cũ (muốn giữ, hãy sửa ở trang Nhập khoản).</div>
     </div>
     <div class="form-field">
       <label>Ghi chú (không bắt buộc)</label>
@@ -1654,9 +1678,41 @@
       <label>Tên khoản</label>
       <input type="text" id="itemModalName" placeholder="VD: Techcombank">
     </div>
+    <div class="form-field" style="margin-top:10px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
+        <input type="checkbox" id="itemModalQtyCheck" style="width:16px; height:16px; min-width:16px;">
+        Khoản theo số lượng × đơn giá (vd: vàng theo chỉ, đất theo m²…)
+      </label>
+    </div>
+    <div class="form-field" id="itemModalQtyUnitWrap" style="display:none; margin-top:6px;">
+      <label>Đơn vị tính</label>
+      <input type="text" id="itemModalQtyUnit" placeholder="VD: chỉ, lượng, m², cổ phiếu…">
+    </div>
     <div class="modal-actions">
       <button class="btn secondary" id="itemModalCancel">Huỷ</button>
       <button class="btn" id="itemModalSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="itemUnitModalBackdrop">
+  <div class="modal">
+    <h3>Cấu hình đơn vị khoản</h3>
+    <div class="modal-context" id="itemUnitModalNameLabel">Khoản: —</div>
+    <div class="form-field" style="margin-top:10px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
+        <input type="checkbox" id="itemUnitModalQtyCheck" style="width:16px; height:16px; min-width:16px;">
+        Khoản theo số lượng × đơn giá (vd: vàng theo chỉ, đất theo m²…)
+      </label>
+    </div>
+    <div class="form-field" id="itemUnitModalUnitWrap" style="display:none; margin-top:6px;">
+      <label>Đơn vị tính</label>
+      <input type="text" id="itemUnitModalUnit" placeholder="VD: chỉ, lượng, m², cổ phiếu…">
+    </div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:8px;" id="itemUnitModalNote"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="itemUnitModalCancel">Huỷ</button>
+      <button class="btn" id="itemUnitModalSave">Lưu</button>
     </div>
   </div>
 </div>
@@ -2233,7 +2289,8 @@ var ICON_SVGS = {
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>',
   eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a21.6 21.6 0 015.06-5.94M9.9 4.24A9.7 9.7 0 0112 4c7 0 11 7 11 7a21.6 21.6 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24"/><path d="M1 1l22 22"/></svg>',
-  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
+  ruler: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="1.5"/><path d="M6 7v3M10 7v5M14 7v3M18 7v5"/></svg>'
 };
 function iconBtnHtml(opts){
   var icon = ICON_SVGS[opts.icon] || "";
@@ -2249,6 +2306,23 @@ function groupById(id){
 }
 function itemById(id){
   return state.items.find(function(i){ return i.id===id; });
+}
+// Dòng phụ nhỏ "(5 chỉ × 7.500.000đ)" hiện cạnh số tiền chính của các khoản theo số lượng × đơn giá
+// (vàng, đất, cổ phiếu…) — amount VND vẫn luôn là số liệu chính dùng cho mọi tính tổng/biểu đồ,
+// dòng này chỉ để tham khảo, tự ẩn khi bật chế độ Ẩn số liệu. CHỈ hiện khi khoản đang thật sự bật
+// chế độ số lượng (kiểm tra item.qtyUnit hiện tại, không chỉ dựa vào e.qty còn sót lại trên entry
+// cũ) — nếu user đã tắt "khoản theo số lượng" cho khoản đó, chi tiết này cũng ẩn theo ngay,
+// tránh hiện chi tiết mồ côi kiểu "5 × 7.500.000đ" (thiếu tên đơn vị) sau khi đã tắt cấu hình.
+function qtyDetailText(e){
+  if(!e || e.qty==null || e.unitPrice==null || privacyMode) return "";
+  var item = itemById(e.itemId);
+  if(!item || !item.qtyUnit) return "";
+  var qtyStr = e.qty.toLocaleString("vi-VN", {maximumFractionDigits:6});
+  return qtyStr+" "+item.qtyUnit+" × "+Math.round(e.unitPrice).toLocaleString("vi-VN")+"đ";
+}
+function qtyDetailHtml(e){
+  var text = qtyDetailText(e);
+  return text ? '<span class="qty-sub-detail">'+text+'</span>' : "";
 }
 function itemsForGroup(groupId){
   return state.items.filter(function(i){ return i.groupId===groupId; });
@@ -2949,7 +3023,7 @@ function fillItemSelectForEntry(forceIncludeId){
     sel.appendChild(ph2);
     items.forEach(function(it){
       var o=document.createElement("option");
-      o.value=it.id; o.textContent = it.name + (it.archived? " (đã ẩn)":"");
+      o.value=it.id; o.textContent = it.name + (it.qtyUnit? " ("+it.qtyUnit+")":"") + (it.archived? " (đã ẩn)":"");
       sel.appendChild(o);
     });
   }
@@ -2986,9 +3060,11 @@ function initEntryControls(){
       openItemModal(groupId, function(newItem){
         fillItemSelectForEntry();
         document.getElementById("entryItem").value = newItem.id;
+        updateEntryQtyFieldsVisibility();
       });
       fillItemSelectForEntry();
     }
+    updateEntryQtyFieldsVisibility();
   });
 
   var amountInput = document.getElementById("entryAmount");
@@ -2998,6 +3074,20 @@ function initEntryControls(){
     var pos = Math.max(0, this.value.length - cursorFromEnd);
     this.setSelectionRange(pos,pos);
   });
+
+  var qtyInput = document.getElementById("entryQty");
+  qtyInput.addEventListener("input", function(){
+    updateEntryQtyTotalPreview();
+  });
+  var unitPriceInput = document.getElementById("entryUnitPrice");
+  unitPriceInput.addEventListener("input", function(){
+    var cursorFromEnd = this.value.length - this.selectionStart;
+    this.value = formatAmountDigits(this.value);
+    var pos = Math.max(0, this.value.length - cursorFromEnd);
+    this.setSelectionRange(pos,pos);
+    updateEntryQtyTotalPreview();
+  });
+  updateEntryQtyFieldsVisibility();
 
   fillGroupSelect(document.getElementById("listGroup"), true, false);
   document.getElementById("listGroup").addEventListener("change", renderEntryTable);
@@ -3029,34 +3119,91 @@ function initEntryControls(){
 
   enhanceSelects(["entryMonth","entryYear","entryGroup","entryItem","listGroup"]);
 }
+function parseQtyInput(raw){
+  var s = (raw || "").trim().replace(/,/g, ".");
+  s = s.replace(/[^\d.]/g, "");
+  var firstDot = s.indexOf(".");
+  if(firstDot !== -1) s = s.slice(0, firstDot+1) + s.slice(firstDot+1).replace(/\./g, "");
+  var n = parseFloat(s);
+  return isFinite(n) ? n : NaN;
+}
+function currentEntrySelectedItem(){
+  var itemId = document.getElementById("entryItem").value;
+  return itemId ? itemById(itemId) : null;
+}
+function updateEntryQtyFieldsVisibility(){
+  var it = currentEntrySelectedItem();
+  var isQty = !!(it && it.qtyUnit);
+  document.getElementById("entryAmountFieldWrap").style.display = isQty ? "none" : "";
+  document.getElementById("entryQtyFieldWrap").style.display = isQty ? "" : "none";
+  document.getElementById("entryUnitPriceFieldWrap").style.display = isQty ? "" : "none";
+  document.getElementById("entryQtyTotalWrap").style.display = isQty ? "" : "none";
+  if(isQty){
+    document.getElementById("entryQtyLabel").textContent = "Số lượng (" + it.qtyUnit + ")";
+    updateEntryQtyTotalPreview();
+  }
+}
+function updateEntryQtyTotalPreview(){
+  var qty = parseQtyInput(document.getElementById("entryQty").value);
+  var price = parseAmountInput(document.getElementById("entryUnitPrice").value);
+  var total = (isFinite(qty) ? qty : 0) * (isFinite(price) ? price : 0);
+  document.getElementById("entryQtyTotalDisplay").textContent = Math.round(total).toLocaleString("vi-VN") + " đ";
+}
 var editingEntryId = null;
 function saveEntry(){
   var month = parseInt(document.getElementById("entryMonth").value,10);
   var year = parseInt(document.getElementById("entryYear").value,10);
   var groupId = document.getElementById("entryGroup").value;
   var itemId = document.getElementById("entryItem").value;
-  var amount = parseAmountInput(document.getElementById("entryAmount").value);
 
   if(!groupId || groupId === "__create__"){ toast("Vui lòng chọn nhóm."); return; }
   if(!itemId || itemId === "__create__"){ toast("Vui lòng chọn khoản."); return; }
-  if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
+
+  var item = itemById(itemId);
+  var isQty = !!(item && item.qtyUnit);
+  var amount, qty = null, unitPrice = null;
+  if(isQty){
+    qty = parseQtyInput(document.getElementById("entryQty").value);
+    unitPrice = parseAmountInput(document.getElementById("entryUnitPrice").value);
+    if(!isFinite(qty) || qty < 0){ toast("Số lượng không hợp lệ."); return; }
+    if(!isFinite(unitPrice) || unitPrice < 0){ toast("Đơn giá không hợp lệ."); return; }
+    amount = Math.round(qty * unitPrice);
+  } else {
+    amount = parseAmountInput(document.getElementById("entryAmount").value);
+    if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
+  }
 
   var note = document.getElementById("entryNote").value.trim();
 
   if(editingEntryId){
     var e = state.entries.find(function(x){ return x.id===editingEntryId; });
-    if(e){ e.month=month; e.year=year; e.itemId=itemId; e.amount=amount; e.note=note; }
+    if(e){ e.month=month; e.year=year; e.itemId=itemId; e.amount=amount; e.note=note; e.qty=qty; e.unitPrice=unitPrice; }
     editingEntryId = null;
     document.getElementById("entrySaveBtn").textContent = "+ Thêm khoản";
   } else {
-    state.entries.push({ id:uid(), itemId:itemId, month:month, year:year, amount:amount, note:note });
+    state.entries.push({ id:uid(), itemId:itemId, month:month, year:year, amount:amount, note:note, qty:qty, unitPrice:unitPrice });
   }
   saveState();
   document.getElementById("entryAmount").value = "";
+  document.getElementById("entryQty").value = "";
+  document.getElementById("entryUnitPrice").value = "";
+  updateEntryQtyTotalPreview();
   document.getElementById("entryNote").value = "";
   toast("Đã lưu khoản.");
   renderEntryTable();
   refreshSelectorsThatDependOnYears();
+}
+function fillEntryAmountFields(item, e){
+  var isQty = !!(item && item.qtyUnit);
+  if(isQty){
+    var qty = (e.qty!=null) ? e.qty : 1;
+    var unitPrice = (e.unitPrice!=null) ? e.unitPrice : e.amount;
+    document.getElementById("entryQty").value = qty.toLocaleString("vi-VN", {maximumFractionDigits:6});
+    document.getElementById("entryUnitPrice").value = Math.round(unitPrice).toLocaleString("vi-VN");
+  } else {
+    document.getElementById("entryAmount").value = e.amount.toLocaleString("vi-VN");
+  }
+  updateEntryQtyFieldsVisibility();
 }
 function editEntry(id){
   var e = state.entries.find(function(x){ return x.id===id; });
@@ -3068,7 +3215,7 @@ function editEntry(id){
   document.getElementById("entryGroup").value = item.groupId;
   fillItemSelectForEntry(item.id);
   document.getElementById("entryItem").value = item.id;
-  document.getElementById("entryAmount").value = e.amount.toLocaleString("vi-VN");
+  fillEntryAmountFields(item, e);
   document.getElementById("entryNote").value = e.note || "";
   editingEntryId = id;
   document.getElementById("entrySaveBtn").textContent = "Cập nhật khoản";
@@ -3085,9 +3232,9 @@ function copyPrevEntryToForm(prevEntryId){
   document.getElementById("entryGroup").value = item.groupId;
   fillItemSelectForEntry(item.id);
   document.getElementById("entryItem").value = item.id;
-  document.getElementById("entryAmount").value = pe.amount.toLocaleString("vi-VN");
+  fillEntryAmountFields(item, pe);
   document.getElementById("entryNote").value = pe.note || "";
-  toast("Đã sao chép từ tháng trước — kiểm tra lại số tiền rồi bấm Lưu.");
+  toast("Đã sao chép từ tháng trước — kiểm tra lại số liệu rồi bấm Lưu.");
   window.scrollTo({top:0, behavior:"smooth"});
 }
 function showNoteModal(entryId){
@@ -3098,7 +3245,7 @@ function showNoteModal(entryId){
   var gname = g ? g.name : "—";
   var iname = item ? item.name : "Khoản";
   document.getElementById("noteModalTitle").textContent = gname + " — " + iname;
-  document.getElementById("noteModalAmount").textContent = fmtMoney(e.amount);
+  document.getElementById("noteModalAmount").innerHTML = fmtMoney(e.amount) + qtyDetailHtml(e);
   document.getElementById("noteModalSub").textContent = MONTH_NAMES[e.month-1] + "/" + e.year;
   document.getElementById("noteModalText").textContent = e.note || "";
   document.getElementById("noteModalBackdrop").classList.add("active");
@@ -3144,7 +3291,7 @@ function openDetailView(month, year, groupId){
     var tr = document.createElement("tr");
     tr.innerHTML =
       '<td>'+nameCell+'</td>'+
-      '<td class="num">'+fmtMoney(e.amount)+'</td>'+
+      '<td class="num">'+fmtMoney(e.amount)+qtyDetailHtml(e)+'</td>'+
       '<td class="num">'+(hasNote ? '<button class="note-icon-btn" data-act="note" data-id="'+e.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>' : '')+'</td>';
     tbody.appendChild(tr);
   });
@@ -3421,22 +3568,25 @@ function renderEntryTable(){
       statusCellHtml = '';
       actionHtml = pe ? iconBtnHtml({act:"copy", id:pe.id, icon:"copy", title:"Sao chép từ tháng trước"}) : '';
     } else if(!pe){
-      curCellHtml = fmtMoney(ce.amount);
+      curCellHtml = fmtMoney(ce.amount) + qtyDetailHtml(ce);
       statusCellHtml = '<span class="compare-status-new">Mới</span>';
       actionHtml = iconBtnHtml({act:"edit", id:ce.id, icon:"edit", title:"Sửa"});
     } else if(pe.amount !== ce.amount){
       var delta = ce.amount - pe.amount;
       var up = delta>=0;
       var deltaClass = up ? "compare-delta-up" : "compare-delta-down";
-      curCellHtml = fmtMoney(ce.amount);
+      curCellHtml = fmtMoney(ce.amount) + qtyDetailHtml(ce);
       statusCellHtml = '<span class="'+deltaClass+'">'+(up?"▲":"▼")+' '+(up?"+":"")+fmtMoney(delta)+'</span>';
       actionHtml = iconBtnHtml({act:"edit", id:ce.id, icon:"edit", title:"Sửa"});
     } else {
-      curCellHtml = fmtMoney(ce.amount);
+      curCellHtml = fmtMoney(ce.amount) + qtyDetailHtml(ce);
       statusCellHtml = '<span class="compare-status-same">Không đổi</span>';
       actionHtml = iconBtnHtml({act:"edit", id:ce.id, icon:"edit", title:"Sửa"});
     }
-    var noteBtn = ce
+    // Chỉ hiện icon khi entry THẬT SỰ có ghi chú (hasNote) — trước đây điều kiện chỉ check "có ce hay
+    // không" (bất kỳ khoản nào có nhập số liệu tháng này đều hiện icon dù ghi chú rỗng), khiến icon
+    // hiện tràn lan kể cả những khoản chưa từng ghi chú gì.
+    var noteBtn = hasNote
       ? '<button class="note-icon-btn" data-act="note" data-id="'+ce.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>'
       : '';
     var delBtn = ce ? iconBtnHtml({act:"del", id:ce.id, icon:"trash", title:"Xoá", extraClass:"del"}) : '';
@@ -3444,7 +3594,7 @@ function renderEntryTable(){
       '<td>'+(ce ? '<input type="checkbox" class="entry-row-cb" data-id="'+ce.id+'">' : '')+'</td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
       '<td>'+iname+'</td>'+
-      '<td class="num" style="color:var(--muted);">'+(pe ? fmtMoney(pe.amount) : "—")+'</td>'+
+      '<td class="num" style="color:var(--muted);">'+(pe ? fmtMoney(pe.amount)+qtyDetailHtml(pe) : "—")+'</td>'+
       '<td class="num">'+curCellHtml+'</td>'+
       '<td class="num">'+statusCellHtml+'</td>'+
       '<td class="num">'+noteBtn+'</td>'+
@@ -3587,22 +3737,69 @@ function openItemModal(groupId, onSave){
   var g = groupById(groupId);
   var backdrop = document.getElementById("itemModalBackdrop");
   var input = document.getElementById("itemModalName");
+  var qtyCheck = document.getElementById("itemModalQtyCheck");
+  var qtyUnitWrap = document.getElementById("itemModalQtyUnitWrap");
+  var qtyUnitInput = document.getElementById("itemModalQtyUnit");
   document.getElementById("itemModalGroupLabel").textContent = "Nhóm: " + (g ? g.name : "—");
   input.value = "";
+  qtyCheck.checked = false;
+  qtyUnitInput.value = "";
+  qtyUnitWrap.style.display = "none";
   backdrop.classList.add("active");
   input.focus();
   function close(){ backdrop.classList.remove("active"); }
+  qtyCheck.onchange = function(){ qtyUnitWrap.style.display = qtyCheck.checked ? "" : "none"; };
   document.getElementById("itemModalCancel").onclick = close;
   document.getElementById("itemModalSave").onclick = function(){
     var name = input.value.trim();
     if(!name){ toast("Vui lòng nhập tên khoản."); return; }
-    var it = { id: uid(), groupId: groupId, name: name, archived:false, colorIdx:null };
+    var qtyUnit = null;
+    if(qtyCheck.checked){
+      qtyUnit = qtyUnitInput.value.trim();
+      if(!qtyUnit){ toast("Vui lòng nhập đơn vị tính (VD: chỉ, m²…)."); return; }
+    }
+    var it = { id: uid(), groupId: groupId, name: name, archived:false, colorIdx:null, qtyUnit: qtyUnit };
     state.items.push(it);
     saveState();
     close();
     toast("Đã thêm khoản \""+name+"\".");
     if(onSave) onSave(it);
     if(document.getElementById("page-groups").classList.contains("active")) renderGroupsManagementPage();
+  };
+}
+function configureItemUnit(id){
+  var it = itemById(id);
+  if(!it) return;
+  var backdrop = document.getElementById("itemUnitModalBackdrop");
+  var qtyCheck = document.getElementById("itemUnitModalQtyCheck");
+  var qtyUnitWrap = document.getElementById("itemUnitModalUnitWrap");
+  var qtyUnitInput = document.getElementById("itemUnitModalUnit");
+  var noteEl = document.getElementById("itemUnitModalNote");
+  document.getElementById("itemUnitModalNameLabel").textContent = "Khoản: " + it.name;
+  qtyCheck.checked = !!it.qtyUnit;
+  qtyUnitInput.value = it.qtyUnit || "";
+  qtyUnitWrap.style.display = it.qtyUnit ? "" : "none";
+  var cnt = entryCountForItem(id);
+  noteEl.textContent = cnt>0
+    ? "Khoản này đã có "+cnt+" lần nhập trước đó — đổi cấu hình KHÔNG ảnh hưởng số liệu cũ đã lưu, chỉ áp dụng khi bạn sửa lại hoặc nhập thêm từ giờ trở đi."
+    : "";
+  backdrop.classList.add("active");
+  function close(){ backdrop.classList.remove("active"); }
+  qtyCheck.onchange = function(){ qtyUnitWrap.style.display = qtyCheck.checked ? "" : "none"; };
+  document.getElementById("itemUnitModalCancel").onclick = close;
+  document.getElementById("itemUnitModalSave").onclick = function(){
+    var qtyUnit = null;
+    if(qtyCheck.checked){
+      qtyUnit = qtyUnitInput.value.trim();
+      if(!qtyUnit){ toast("Vui lòng nhập đơn vị tính (VD: chỉ, m²…)."); return; }
+    }
+    it.qtyUnit = qtyUnit;
+    saveState();
+    close();
+    toast("Đã cập nhật cấu hình khoản.");
+    renderGroupsManagementPage();
+    refreshSelectorsThatDependOnYears();
+    if(document.getElementById("page-entry").classList.contains("active")) updateEntryQtyFieldsVisibility();
   };
 }
 
@@ -3701,12 +3898,14 @@ function buildGroupItemRowsHtml(g, tab){
     var ic = itemColor(it);
     var dragHandle = tab==="archived" ? '' :
       '<span class="drag-handle" title="Kéo để sắp xếp"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></svg></span>';
+    var unitBadge = it.qtyUnit ? ' <span class="item-unit-badge" title="Khoản theo số lượng × đơn giá (đơn vị: '+it.qtyUnit+')">'+it.qtyUnit+'</span>' : '';
     return '<tr class="item-row-draggable" draggable="'+(tab==="archived"?"false":"true")+'" data-item-id="'+it.id+'" data-group-id="'+g.id+'">'+
       '<td class="drag-handle-cell">'+dragHandle+'</td>'+
-      '<td><span class="item-color-dot" style="background:'+ic+'" title="Màu theo nhóm"></span>'+it.name+'</td>'+
+      '<td><span class="item-color-dot" style="background:'+ic+'" title="Màu theo nhóm"></span>'+it.name+unitBadge+'</td>'+
       '<td class="num">'+cnt+'</td>'+
       '<td class="num">'+
         iconBtnHtml({act:"rename-item", id:it.id, icon:"edit", title:"Đổi tên khoản"})+
+        iconBtnHtml({act:"unit-item", id:it.id, icon:"ruler", title:"Cấu hình số lượng × đơn giá"})+
         iconBtnHtml({act:"toggle-item", id:it.id, icon:(it.archived?"eye":"eyeOff"), title:(it.archived?"Hiện lại":"Ẩn khoản")})+
         (cnt===0 ? iconBtnHtml({act:"del-item", id:it.id, icon:"trash", title:"Xoá khoản", extraClass:"del"}) : "")+
       '</td></tr>';
@@ -3714,6 +3913,7 @@ function buildGroupItemRowsHtml(g, tab){
 }
 function wireGroupItemRowEvents(container){
   container.querySelectorAll("[data-act='rename-item']").forEach(function(b){ b.addEventListener("click", function(){ renameItem(b.getAttribute("data-id")); }); });
+  container.querySelectorAll("[data-act='unit-item']").forEach(function(b){ b.addEventListener("click", function(){ configureItemUnit(b.getAttribute("data-id")); }); });
   container.querySelectorAll("[data-act='toggle-item']").forEach(function(b){ b.addEventListener("click", function(){ toggleArchiveItem(b.getAttribute("data-id")); }); });
   container.querySelectorAll("[data-act='del-item']").forEach(function(b){ b.addEventListener("click", function(){ deleteItemHard(b.getAttribute("data-id")); }); });
 
@@ -3894,7 +4094,9 @@ function renderYearlyItemTable(){
     // chỉ liệt kê khoản có ít nhất 1 số liệu trong năm đang xem (kể cả khoản đã ẩn, để không
     // mất quyền xem lại dữ liệu lịch sử) — tránh bảng dài lê thê với các khoản chưa từng nhập
     var items = itemsForGroup(g.id).filter(function(it){
-      for(var mm=1; mm<=12; mm++){ if(itemAmountFor(mm, y, it.id)) return true; }
+      // Kiểm tra CÓ ENTRY hay không (không phải "amount khác 0") — khoản số lượng có thể ghi nhận
+      // 0 đơn vị (vd. đã bán hết vàng tháng này) và vẫn cần hiện trong bảng, kèm ghi chú nếu có.
+      for(var mm=1; mm<=12; mm++){ if(itemEntryFor(mm, y, it.id)) return true; }
       return false;
     });
     if(!items.length) return; // nhóm không có dữ liệu trong năm này -> bỏ qua, không tạo hàng trống
@@ -3909,8 +4111,11 @@ function renderYearlyItemTable(){
       html += "<tr style=\"background:"+gcolor+"0D;\"><td style='padding-left:24px;'><span class='group-tag' style='background:"+color+"22; color:"+color+"'><span class='dot-sw' style='background:"+color+"'></span>"+it.name+"</span></td>";
       for(var m2=1;m2<=12;m2++){
         var ent = itemEntryFor(m2, y, it.id);
-        var amt = ent ? ent.amount : 0;
-        if(amt){
+        // Kiểm tra entry CÓ TỒN TẠI hay không, không phải "amount khác 0" — trước đây dùng
+        // `if(amt)` khiến entry ghi nhận đúng 0 (vd. đã bán hết vàng tháng này, qty=0) bị coi như
+        // "chưa nhập" (hiện "—", mất luôn ghi chú và khả năng bấm xem chi tiết).
+        if(ent){
+          var amt = ent.amount;
           var hasNote = !!(ent.note && ent.note.trim());
           var noteDot = hasNote
             ? "<span class='yit-note-dot' aria-hidden='true'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z'/></svg></span>"
@@ -3918,7 +4123,9 @@ function renderYearlyItemTable(){
           var tdAttrs = hasNote
             ? " class='num yit-note-cell' data-act='note' data-id='"+ent.id+"' tabindex='0' role='button' title='Xem ghi chú' aria-label='Xem ghi chú'"
             : " class='num'";
-          html += "<td"+tdAttrs+"><span class='yit-cell'><span class='amt-abbr' data-full=\""+fmtMoney(amt)+"\">"+abbreviateMoneyUnit(amt)+"</span>"+noteDot+"</span></td>";
+          var detailText = qtyDetailText(ent);
+          var fullLabel = fmtMoney(amt) + (detailText ? " ("+detailText+")" : "");
+          html += "<td"+tdAttrs+"><span class='yit-cell'><span class='amt-abbr' data-full=\""+fullLabel+"\">"+abbreviateMoneyUnit(amt)+"</span>"+noteDot+"</span></td>";
         } else {
           html += "<td class='num'>—</td>";
         }
@@ -3927,8 +4134,11 @@ function renderYearlyItemTable(){
     });
     html += "<tr class='yit-subtotal-row' style=\"font-weight:800; background:"+gcolor+"22;\"><td style=\"color:"+gcolor+"; padding-left:24px;\">Tổng</td>";
     for(var m3=1;m3<=12;m3++){
+      // Hiện "—" khi KHÔNG có entry nào của nhóm này trong tháng đó — không phải khi tổng = 0
+      // (tổng thật sự = 0 vẫn là dữ liệu có ý nghĩa, vd. mọi khoản trong nhóm đều ghi nhận 0).
       var gt = totalFor(m3, y, g.id);
-      html += gt
+      var hasGroupData = entriesFor(m3, y, g.id).length > 0;
+      html += hasGroupData
         ? "<td class='num td-clickable' data-month='"+m3+"' data-group='"+g.id+"'><span class='amt-abbr' data-full=\""+fmtMoney(gt)+"\">"+abbreviateMoneyUnit(gt)+"</span></td>"
         : "<td class='num'>—</td>";
     }
@@ -3938,7 +4148,8 @@ function renderYearlyItemTable(){
     html += "<tr class='yit-grandtotal-row' style='font-weight:800; background:var(--surface-2);'><td>Tổng tất cả</td>";
     for(var m4=1;m4<=12;m4++){
       var tt = totalFor(m4, y, null);
-      html += tt
+      var hasAnyData = entriesFor(m4, y, null).length > 0;
+      html += hasAnyData
         ? "<td class='num td-clickable' data-month='"+m4+"' data-group=''><span class='amt-abbr' data-full=\""+fmtMoney(tt)+"\">"+abbreviateMoneyUnit(tt)+"</span></td>"
         : "<td class='num'>—</td>";
     }
@@ -4518,6 +4729,9 @@ function entriesToExcelRows(list){
       "Nhóm": g ? g.name : "",
       "Khoản": item ? item.name : "",
       "Số tiền": e.amount,
+      "Số lượng": e.qty!=null ? e.qty : "",
+      "Đơn giá": e.unitPrice!=null ? e.unitPrice : "",
+      "Đơn vị": (item && item.qtyUnit) ? item.qtyUnit : "",
       "Ghi chú": e.note || ""
     };
   });
@@ -4640,7 +4854,7 @@ function renderSearchResults(resetPage){
       '<td class="num">'+(startIdx+idx+1)+'</td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
       '<td>'+iname+'</td>'+
-      '<td class="num">'+fmtMoney(e.amount)+'</td>'+
+      '<td class="num">'+fmtMoney(e.amount)+qtyDetailHtml(e)+'</td>'+
       '<td>'+MONTH_NAMES[e.month-1]+'/'+e.year+'</td>'+
       '<td class="num">'+(hasNote ? '<button class="note-icon-btn" data-act="note" data-id="'+e.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>' : '')+'</td>'+
       '<td class="num">'+iconBtnHtml({act:"edit", id:e.id, icon:"edit", title:"Sửa"})+iconBtnHtml({act:"del", id:e.id, icon:"trash", title:"Xoá", extraClass:"del"})+'</td>';
@@ -4699,6 +4913,7 @@ function openSearchEditModal(id){
   document.getElementById("searchEditYear").value = e.year;
   document.getElementById("searchEditAmount").value = e.amount.toLocaleString("vi-VN");
   document.getElementById("searchEditNote").value = e.note || "";
+  document.getElementById("searchEditQtyNote").style.display = (item && item.qtyUnit && e.qty!=null) ? "block" : "none";
   document.getElementById("searchEditModalBackdrop").classList.add("active");
 }
 function initSearchEditModal(){
@@ -4724,6 +4939,7 @@ function initSearchEditModal(){
     var year = parseInt(document.getElementById("searchEditYear").value,10);
     var amount = parseAmountInput(document.getElementById("searchEditAmount").value);
     if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
+    if(amount !== e.amount && e.qty!=null){ e.qty = null; e.unitPrice = null; }
     e.month = month; e.year = year; e.amount = amount;
     e.note = document.getElementById("searchEditNote").value.trim();
     saveState();
@@ -4914,6 +5130,9 @@ function exportEntryPageResults(){
       "Nhóm": grp ? grp.name : "",
       "Khoản": item ? item.name : "",
       "Số tiền": e.amount,
+      "Số lượng": e.qty!=null ? e.qty : "",
+      "Đơn giá": e.unitPrice!=null ? e.unitPrice : "",
+      "Đơn vị": (item && item.qtyUnit) ? item.qtyUnit : "",
       "Ghi chú": e.note || ""
     };
   });
@@ -4933,6 +5152,9 @@ function exportExcel(){
       "Nhóm": g ? g.name : "",
       "Khoản": item ? item.name : "",
       "Số tiền": e.amount,
+      "Số lượng": e.qty!=null ? e.qty : "",
+      "Đơn giá": e.unitPrice!=null ? e.unitPrice : "",
+      "Đơn vị": (item && item.qtyUnit) ? item.qtyUnit : "",
       "Ghi chú": e.note || ""
     };
   });
@@ -4960,7 +5182,20 @@ function downloadExcelTemplate(){
     "Nhóm": sampleGroup,
     "Khoản": sampleItem ? sampleItem.name : "Ví dụ: Techcombank",
     "Số tiền": 1000000,
+    "Số lượng": "",
+    "Đơn giá": "",
+    "Đơn vị": "",
     "Ghi chú": "Ví dụ ghi chú (không bắt buộc)"
+  },{
+    "Tháng": now.getMonth()+1,
+    "Năm": now.getFullYear(),
+    "Nhóm": "Đầu tư",
+    "Khoản": "Vàng SJC",
+    "Số tiền": 37500000,
+    "Số lượng": 5,
+    "Đơn giá": 7500000,
+    "Đơn vị": "chỉ",
+    "Ghi chú": "Ví dụ khoản theo số lượng × đơn giá — bỏ trống 3 cột Số lượng/Đơn giá/Đơn vị nếu là khoản tiền thông thường"
   }];
   var noteRows = [{ "Tháng": now.getMonth()+1, "Năm": now.getFullYear(), "Ghi chú tháng": "Ví dụ: tháng này tăng vì..." }];
   var wb = XLSX.utils.book_new();
@@ -4969,7 +5204,10 @@ function downloadExcelTemplate(){
   XLSX.writeFile(wb, "mau-nhap-du-lieu.xlsx");
   toast("Đã tải file mẫu.");
 }
-function normalizeName(s){ return (s||"").toString().trim().toLowerCase(); }
+// .normalize("NFC") để tránh tạo nhầm nhóm/khoản TRÙNG khi tên tiếng Việt có dấu từ file Excel
+// nguồn khác (Google Sheet cũ, máy khác…) được mã hoá Unicode khác dạng (NFD/tổ hợp dấu rời) so
+// với tên đã lưu trong app dù nhìn giống hệt nhau trên màn hình.
+function normalizeName(s){ return (s||"").toString().trim().toLowerCase().normalize("NFC"); }
 function buildExcelImportPlan(rows){
   var plan = { newGroups:[], newItems:[], toCreate:[], toUpdate:[], errors:[] };
   var groupByName = {};
@@ -4988,6 +5226,22 @@ function buildExcelImportPlan(rows){
     var amount = typeof amountRaw === "number" ? amountRaw : parseAmountInput(String(amountRaw||""));
     var note = (row["Ghi chú"]||"").toString().trim();
 
+    // Cột Số lượng/Đơn giá/Đơn vị — tuỳ chọn, chỉ áp dụng cho khoản theo số lượng × đơn giá
+    // (vàng, đất…). Nếu có đủ Số lượng+Đơn giá hợp lệ, Số tiền được TÍNH LẠI từ 2 cột này
+    // (đáng tin hơn cột Số tiền, phòng trường hợp user chỉ sửa số lượng/đơn giá trong Excel
+    // mà quên cập nhật cột Số tiền).
+    var qtyRaw = row["Số lượng"], unitPriceRaw = row["Đơn giá"];
+    var unitLabel = (row["Đơn vị"]||"").toString().trim();
+    var qty = null, unitPrice = null;
+    if(qtyRaw!==undefined && qtyRaw!=="" && unitPriceRaw!==undefined && unitPriceRaw!==""){
+      var qtyParsed = typeof qtyRaw==="number" ? qtyRaw : parseQtyInput(String(qtyRaw));
+      var priceParsed = typeof unitPriceRaw==="number" ? unitPriceRaw : parseAmountInput(String(unitPriceRaw));
+      if(isFinite(qtyParsed) && qtyParsed>=0 && isFinite(priceParsed) && priceParsed>=0){
+        qty = qtyParsed; unitPrice = priceParsed;
+        amount = Math.round(qty * unitPrice);
+      }
+    }
+
     if(!month || month<1 || month>12 || !year || year<2000 || year>2100 || !groupName || !itemName || !isFinite(amount) || amount<0){
       plan.errors.push({ row: idx+2, reason: "Thiếu hoặc sai dữ liệu (tháng/năm/nhóm/khoản/số tiền)." });
       return;
@@ -5005,19 +5259,32 @@ function buildExcelImportPlan(rows){
     var iKey = groupRefId+"||"+normalizeName(itemName);
     var item = (group.__new ? null : itemByKey[iKey]) || pendingNewItems[iKey];
     if(!item){
-      item = { __new:true, tempId:"newitem:"+iKey, name: itemName, groupRef: group };
+      // Chỉ đặt qtyUnit cho khoản MỚI tạo qua import (khớp đúng dòng đầu tiên có Đơn vị) — khoản
+      // đã tồn tại từ trước thì giữ nguyên cấu hình hiện tại, không tự đổi loại khoản qua import
+      // (đổi loại khoản đã có phải làm chủ ý qua icon "Cấu hình số lượng × đơn giá" ở Quản lý nhóm).
+      item = { __new:true, tempId:"newitem:"+iKey, name: itemName, groupRef: group, qtyUnit: (qty!=null && unitLabel) ? unitLabel : null };
       pendingNewItems[iKey] = item;
       plan.newItems.push(item);
     }
+
+    // Chỉ gắn qty/unitPrice vào dòng nhập nếu khoản ĐÍCH THỰC là loại số lượng × đơn giá (khoản mới
+    // vừa được đặt qtyUnit ở trên, hoặc khoản cũ đã có sẵn qtyUnit) — tránh hiện nhầm chi tiết
+    // "x chỉ × y đ" cạnh 1 khoản tiền thông thường chỉ vì file Excel lỡ có điền cột Số lượng/Đơn giá.
+    var itemIsQty = !!item.qtyUnit;
+    var rowQty = itemIsQty ? qty : null;
+    var rowUnitPrice = itemIsQty ? unitPrice : null;
 
     var existingEntry = null;
     if(!item.__new){
       existingEntry = state.entries.find(function(e){ return e.itemId===item.id && e.month===month && e.year===year; });
     }
-    var rowPlan = { month:month, year:year, groupName:groupName, itemName:itemName, amount:amount, note:note, group:group, item:item };
+    var rowPlan = { month:month, year:year, groupName:groupName, itemName:itemName, amount:amount, note:note, group:group, item:item, qty:rowQty, unitPrice:rowUnitPrice };
     if(existingEntry){
+      var existQty = existingEntry.qty!=null ? existingEntry.qty : null;
+      var existUnitPrice = existingEntry.unitPrice!=null ? existingEntry.unitPrice : null;
+      var sameQty = existQty===rowQty && existUnitPrice===rowUnitPrice;
       rowPlan.existingEntry = existingEntry;
-      rowPlan.status = (existingEntry.amount===amount && (existingEntry.note||"")===note) ? "unchanged" : "update";
+      rowPlan.status = (existingEntry.amount===amount && (existingEntry.note||"")===note && sameQty) ? "unchanged" : "update";
       plan.toUpdate.push(rowPlan);
     } else {
       rowPlan.status = "create";
@@ -5068,18 +5335,20 @@ function applyExcelImportPlan(plan){
   });
   plan.newItems.forEach(function(it){
     var groupId = it.groupRef.__new ? it.groupRef.realId : it.groupRef.id;
-    var real = { id: uid(), groupId: groupId, name: it.name, archived:false, colorIdx:null };
+    var real = { id: uid(), groupId: groupId, name: it.name, archived:false, colorIdx:null, qtyUnit: it.qtyUnit || null };
     state.items.push(real);
     it.realId = real.id;
   });
   function resolveItemId(rowPlan){ return rowPlan.item.__new ? rowPlan.item.realId : rowPlan.item.id; }
   plan.toCreate.forEach(function(rp){
-    state.entries.push({ id: uid(), itemId: resolveItemId(rp), month: rp.month, year: rp.year, amount: rp.amount, note: rp.note });
+    state.entries.push({ id: uid(), itemId: resolveItemId(rp), month: rp.month, year: rp.year, amount: rp.amount, note: rp.note, qty: rp.qty, unitPrice: rp.unitPrice });
   });
   plan.toUpdate.forEach(function(rp){
     if(rp.status!=="update") return;
     rp.existingEntry.amount = rp.amount;
     rp.existingEntry.note = rp.note;
+    rp.existingEntry.qty = rp.qty;
+    rp.existingEntry.unitPrice = rp.unitPrice;
   });
   (plan.monthNotes||[]).forEach(function(n){
     if(!state.monthNotes) state.monthNotes = {};
