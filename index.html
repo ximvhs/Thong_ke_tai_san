@@ -2062,26 +2062,68 @@ function showLoginNormalView(){
   document.getElementById("loginForgotView").style.display = "none";
   document.getElementById("loginNormalView").style.display = "block";
 }
+var forgotCooldownUntil = 0;
+var forgotCooldownTimer = null;
+function startForgotCooldown(seconds){
+  var btn = document.getElementById("forgotSendBtn");
+  forgotCooldownUntil = Date.now() + seconds * 1000;
+  if(forgotCooldownTimer) clearInterval(forgotCooldownTimer);
+  function tick(){
+    var remain = Math.ceil((forgotCooldownUntil - Date.now()) / 1000);
+    if(remain <= 0){
+      clearInterval(forgotCooldownTimer);
+      forgotCooldownTimer = null;
+      btn.disabled = false;
+      btn.textContent = "Gửi email đặt lại mật khẩu";
+    }else{
+      btn.disabled = true;
+      btn.textContent = "Gửi lại sau " + remain + "s";
+    }
+  }
+  tick();
+  forgotCooldownTimer = setInterval(tick, 1000);
+}
 async function sendForgotPasswordEmail(){
   var email = document.getElementById("forgotEmailInput").value.trim();
   var err = document.getElementById("forgotError");
   err.textContent = "";
   if(!email){ err.textContent = "Vui lòng nhập tài khoản (email)."; return; }
+  if(Date.now() < forgotCooldownUntil){
+    var remain = Math.ceil((forgotCooldownUntil - Date.now()) / 1000);
+    err.textContent = "Vui lòng đợi " + remain + "s rồi thử lại (tránh gửi quá nhiều email liên tiếp).";
+    return;
+  }
+  // AUTH_EMAIL không phải bí mật (đã ghi rõ ở khối CLOUD CONFIG phía trên) nên so sánh phía client là an toàn:
+  // app này chỉ có đúng 1 tài khoản, việc báo "tài khoản không tồn tại" không làm lộ thêm thông tin nào so với
+  // việc AUTH_EMAIL vốn đã nằm sẵn trong mã nguồn công khai.
+  if(AUTH_EMAIL && AUTH_EMAIL !== "YOUR_LOGIN_EMAIL" && email.toLowerCase() !== AUTH_EMAIL.toLowerCase()){
+    err.textContent = "Tài khoản này không tồn tại trong hệ thống.";
+    return;
+  }
   var btn = document.getElementById("forgotSendBtn");
-  var originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = "Đang gửi…";
   try{
     var redirectTo = location.origin + location.pathname;
-    await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
-    // Luôn hiện thông báo chung chung dù email có tồn tại hay không, tránh lộ thông tin tài khoản nào tồn tại.
-    toast("Nếu tài khoản tồn tại, email hướng dẫn đặt lại mật khẩu đã được gửi.");
+    var res = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+    // Supabase KHÔNG throw exception khi có lỗi (kể cả 429/rate-limit) — nó trả về { error: {...} }.
+    // Phải tự kiểm tra res.error, nếu không sẽ hiện nhầm "đã gửi thành công" dù thực ra chưa gửi được gì.
+    if(res && res.error) throw res.error;
+    toast("Tài khoản tồn tại — email hướng dẫn đặt lại mật khẩu đã được gửi.");
     showLoginNormalView();
+    startForgotCooldown(45);
   }catch(e){
-    err.textContent = "Không gửi được email, vui lòng thử lại sau.";
+    var msg = (e && e.message) || "";
+    var status = e && (e.status || e.statusCode);
+    if(status === 429 || msg.indexOf("429") !== -1 || /too many|rate limit/i.test(msg)){
+      err.textContent = "Bạn vừa gửi yêu cầu quá nhiều lần, vui lòng đợi ít phút rồi thử lại.";
+      startForgotCooldown(60);
+    }else{
+      err.textContent = "Không gửi được email, vui lòng thử lại sau.";
+      btn.disabled = false;
+      btn.textContent = "Gửi email đặt lại mật khẩu";
+    }
   }
-  btn.disabled = false;
-  btn.textContent = originalText;
 }
 function openForcePasswordResetModal(){
   document.getElementById("loginScreen").style.display = "";
