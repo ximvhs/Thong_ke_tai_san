@@ -864,7 +864,16 @@
   .ms-dropdown.open .ms-panel{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
   .ms-option{ display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:8px; cursor:pointer; font-size:13px; transition:background .12s ease; }
   .ms-option:hover{ background:var(--page-plane); }
-  .ms-option input{ accent-color: var(--accent); width:15px; height:15px; cursor:pointer; }
+  /* min-width:15px (không chỉ width) là bắt buộc: khi 1 .ms-dropdown được đặt bên trong
+     .form-field (vd. 2 dropdown Nhóm/Năm ở card "Xu hướng theo nhóm"), rule
+     ".form-field input, .form-field select{min-width:180px}" ở trên cũng khớp checkbox
+     bên trong panel này (vẫn là input con trong DOM dù panel định vị "position:absolute").
+     min-width luôn thắng width khi xung đột, nên nếu chỉ đặt width:15px thì checkbox vẫn bị
+     ép rộng 180px, đẩy chữ nhãn ("Chọn tất cả"...) co lại chỉ còn vài chục px và xuống dòng
+     lộn xộn. Khai báo lại min-width ở đây (cùng độ đặc hiệu .0,1,1. nhưng đứng sau trong file
+     nên thắng theo thứ tự nguồn) để checkbox trong MỌI .ms-option luôn đúng kích thước nhỏ,
+     bất kể có nằm trong .form-field hay không. */
+  .ms-option input{ accent-color: var(--accent); width:15px; height:15px; min-width:15px; cursor:pointer; }
   .ms-option-all{ border-bottom:1px solid var(--gridline); margin-bottom:4px; padding-bottom:10px; font-weight:600; }
 
   /* ---------- RESPONSIVE / MOBILE ---------- */
@@ -1224,7 +1233,85 @@
         <div class="empty-state" id="yearlyItemEmpty" style="display:none;">Chưa có khoản nào có dữ liệu trong năm này.</div>
       </div>
 
+      <div class="card" style="margin-bottom:16px;">
+        <h3>Xu hướng theo nhóm</h3>
+        <div class="sub" style="margin-top:-4px; margin-bottom:10px;">Chọn nhóm và năm muốn theo dõi — mỗi đường là 1 nhóm, nối liền qua tất cả các năm đã chọn.</div>
+        <div class="form-row" style="margin-bottom:6px;">
+          <div class="form-field">
+            <label>Nhóm</label>
+            <div class="ms-dropdown" id="trendGroupDropdown">
+              <button class="ms-trigger" id="trendGroupTrigger" type="button">
+                <span class="ms-trigger-text" id="trendGroupTriggerText">Chọn nhóm</span>
+                <span class="ms-badge" id="trendGroupBadge" style="display:none;">0</span>
+                <svg class="ms-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="ms-panel" id="trendGroupPanel">
+                <label class="ms-option ms-option-all"><input type="checkbox" id="trendGroupSelectAll"><span>Chọn tất cả</span></label>
+                <div id="trendGroupOptions"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Năm</label>
+            <div class="ms-dropdown" id="trendYearDropdown">
+              <button class="ms-trigger" id="trendYearTrigger" type="button">
+                <span class="ms-trigger-text" id="trendYearTriggerText">Chọn năm</span>
+                <span class="ms-badge" id="trendYearBadge" style="display:none;">0</span>
+                <svg class="ms-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="ms-panel" id="trendYearPanel">
+                <label class="ms-option ms-option-all"><input type="checkbox" id="trendYearSelectAll"><span>Chọn tất cả</span></label>
+                <div id="trendYearOptions"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap small"><canvas id="chartYearlyTrend"></canvas></div>
+      </div>
+
       <div class="grid-groups" id="yearlyGroupCharts" style="margin-bottom:16px;"></div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <h3>So sánh 2 tháng bất kỳ</h3>
+        <div class="sub" style="margin-top:-4px; margin-bottom:10px;">Chọn 2 mốc thời gian bất kỳ (kể cả khác năm) để xem từng khoản thay đổi ra sao.</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Tháng A</label>
+            <select id="cmpMonthA"></select>
+          </div>
+          <div class="form-field">
+            <label>Năm A</label>
+            <select id="cmpYearA"></select>
+          </div>
+          <div class="form-field">
+            <label>Tháng B</label>
+            <select id="cmpMonthB"></select>
+          </div>
+          <div class="form-field">
+            <label>Năm B</label>
+            <select id="cmpYearB"></select>
+          </div>
+          <div class="form-field">
+            <label>Nhóm</label>
+            <select id="cmpGroup"></select>
+          </div>
+        </div>
+        <div class="page-header" style="margin-bottom:12px;">
+          <div class="sub" id="cmpResultSub" style="font-size:12px;">—</div>
+          <span class="kpi-pct-pill" id="cmpTotalDelta" style="display:none;"></span>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr>
+            <th>Nhóm</th>
+            <th>Tên khoản</th>
+            <th class="num" id="cmpColALabel">Tháng A</th>
+            <th class="num" id="cmpColBLabel">Tháng B</th>
+            <th class="num">Biến động</th>
+          </tr></thead>
+          <tbody id="cmpTableBody"></tbody>
+        </table></div>
+        <div class="empty-state" id="cmpEmptyState" style="display:none;">Chưa có dữ liệu để so sánh trong 2 mốc đã chọn.</div>
+      </div>
 
       <div class="card">
         <h3>So sánh tổng tài sản giữa các năm</h3>
@@ -3433,6 +3520,9 @@ var yearlyCompareYears = {};
 function initYearlyControls(){
   yearlySelectedYear = new Date().getFullYear();
   initYearCompareDropdown();
+  initMultiSelectDropdown("trendGroupDropdown", "trendGroupTrigger");
+  initMultiSelectDropdown("trendYearDropdown", "trendYearTrigger");
+  initMonthCompareTool();
 }
 function renderYearChips(){
   var wrap = document.getElementById("yearChips");
@@ -3577,6 +3667,177 @@ function renderYearlyGroupCharts(){
     });
   });
 }
+/* Biểu đồ đường xu hướng: mỗi nhóm 1 đường màu riêng (đúng màu nhóm dùng chung toàn app) —
+   khác với các biểu đồ cột riêng từng nhóm ở dưới (chỉ xem được 1 nhóm/1 năm 1 lúc), card
+   này cho chọn TỰ DO nhóm nào muốn xem + năm nào muốn xem (multi-select, không còn phụ
+   thuộc yearlySelectedYear/year-chips của bảng chi tiết phía trên). Khi chọn NHIỀU năm,
+   trục ngang nối liền các năm đó theo đúng thứ tự thời gian thực (T1→T12 của năm nhỏ nhất,
+   rồi sang T1 của năm kế tiếp...) để xem xu hướng dài hạn liên tục, không chồng các năm lên
+   nhau theo cùng 1 trục T1-T12. Tháng chưa có số liệu vẫn vẽ là 0 (giống cách totalFor()/các
+   biểu đồ cột theo nhóm đang xử lý), không để trống đường. */
+var trendSelectedGroups = {};
+var trendSelectedYears = {};
+function trendTimelineYears(){
+  var ys = yearsInData().filter(function(y){ return trendSelectedYears[y]; });
+  ys.sort(function(a,b){ return a-b; });
+  return ys;
+}
+function updateTrendGroupTrigger(){
+  var ids = state.groups.map(function(g){ return g.id; }).filter(function(id){ return trendSelectedGroups[id]; });
+  var badge = document.getElementById("trendGroupBadge");
+  var text = document.getElementById("trendGroupTriggerText");
+  if(ids.length===0){
+    badge.style.display="none";
+    text.textContent = "Chọn nhóm";
+  } else if(ids.length===state.groups.length){
+    badge.style.display="none";
+    text.textContent = "Tất cả nhóm";
+  } else if(ids.length<=2){
+    badge.style.display="none";
+    text.textContent = ids.map(function(id){ var g=groupById(id); return g?g.name:""; }).join(", ");
+  } else {
+    badge.style.display="inline-block";
+    badge.textContent = ids.length;
+    text.textContent = "nhóm đã chọn";
+  }
+}
+function renderTrendGroupChips(){
+  // Mặc định (lần đầu, chưa từng chọn gì) là chọn hết mọi nhóm — giữ đúng hành vi ban đầu
+  // của biểu đồ (hiện mọi nhóm) khi user chưa tự lọc lại. Nhóm tạo thêm SAU khi đã có lựa
+  // chọn thì mặc định KHÔNG tự bật (giống hành vi yearlyCompareYears ở card So sánh theo
+  // năm bên dưới) — user tự bật nếu muốn xem nhóm mới trong biểu đồ này.
+  if(Object.keys(trendSelectedGroups).length===0){
+    state.groups.forEach(function(g){ trendSelectedGroups[g.id] = true; });
+  }
+  var optionsWrap = document.getElementById("trendGroupOptions");
+  optionsWrap.innerHTML = "";
+  state.groups.forEach(function(g){
+    var label = document.createElement("label");
+    label.className = "ms-option";
+    label.innerHTML = "<input type='checkbox' data-group='"+g.id+"' "+(trendSelectedGroups[g.id]?"checked":"")+"><span style='display:flex;align-items:center;gap:8px;'><span class='dot-sw' style='background:"+slotColor(g.colorIdx)+"'></span>"+g.name+"</span>";
+    optionsWrap.appendChild(label);
+    label.querySelector("input").addEventListener("change", function(e){
+      trendSelectedGroups[g.id] = e.target.checked;
+      updateTrendGroupTrigger();
+      renderYearlyTrendChart();
+      var allSel = state.groups.every(function(gg){ return trendSelectedGroups[gg.id]; });
+      document.getElementById("trendGroupSelectAll").checked = allSel;
+    });
+  });
+  var selectAllCb = document.getElementById("trendGroupSelectAll");
+  selectAllCb.checked = state.groups.length>0 && state.groups.every(function(g){ return trendSelectedGroups[g.id]; });
+  selectAllCb.onchange = function(){
+    state.groups.forEach(function(g){ trendSelectedGroups[g.id] = selectAllCb.checked; });
+    optionsWrap.querySelectorAll("input[type='checkbox']").forEach(function(cb){ cb.checked = selectAllCb.checked; });
+    updateTrendGroupTrigger();
+    renderYearlyTrendChart();
+  };
+  updateTrendGroupTrigger();
+}
+function updateTrendYearTrigger(){
+  var ys = yearsInData().filter(function(y){ return trendSelectedYears[y]; });
+  var badge = document.getElementById("trendYearBadge");
+  var text = document.getElementById("trendYearTriggerText");
+  if(ys.length===0){
+    badge.style.display="none";
+    text.textContent = "Chọn năm";
+  } else if(ys.length<=2){
+    badge.style.display="none";
+    text.textContent = ys.map(function(y){return "Năm "+y;}).join(", ");
+  } else {
+    badge.style.display="inline-block";
+    badge.textContent = ys.length;
+    text.textContent = "năm đã chọn";
+  }
+}
+function renderTrendYearChips(){
+  var ys = yearsInData();
+  if(Object.keys(trendSelectedYears).length===0){
+    ys.forEach(function(y){ trendSelectedYears[y] = true; });
+  }
+  var optionsWrap = document.getElementById("trendYearOptions");
+  optionsWrap.innerHTML = "";
+  ys.forEach(function(y){
+    var label = document.createElement("label");
+    label.className = "ms-option";
+    label.innerHTML = "<input type='checkbox' data-year='"+y+"' "+(trendSelectedYears[y]?"checked":"")+"><span>Năm "+y+"</span>";
+    optionsWrap.appendChild(label);
+    label.querySelector("input").addEventListener("change", function(e){
+      trendSelectedYears[y] = e.target.checked;
+      updateTrendYearTrigger();
+      renderYearlyTrendChart();
+      var allSel = ys.every(function(yy){ return trendSelectedYears[yy]; });
+      document.getElementById("trendYearSelectAll").checked = allSel;
+    });
+  });
+  var selectAllCb = document.getElementById("trendYearSelectAll");
+  selectAllCb.checked = ys.length>0 && ys.every(function(y){ return trendSelectedYears[y]; });
+  selectAllCb.onchange = function(){
+    ys.forEach(function(y){ trendSelectedYears[y] = selectAllCb.checked; });
+    optionsWrap.querySelectorAll("input[type='checkbox']").forEach(function(cb){ cb.checked = selectAllCb.checked; });
+    updateTrendYearTrigger();
+    renderYearlyTrendChart();
+  };
+  updateTrendYearTrigger();
+}
+function renderYearlyTrendChart(){
+  var ys = trendTimelineYears();
+  var groupIds = state.groups.map(function(g){ return g.id; }).filter(function(id){ return trendSelectedGroups[id]; });
+  var colors = baseChartColors();
+  var ctx = document.getElementById("chartYearlyTrend").getContext("2d");
+  destroyChart("yearlyTrend");
+
+  if(ys.length===0 || groupIds.length===0){
+    // Chưa chọn nhóm/năm nào (hoặc vừa bỏ chọn hết) — vẫn tạo chart rỗng thay vì để canvas
+    // trơ, tránh lỗi khi người dùng bật lại lựa chọn ngay sau đó.
+    charts.yearlyTrend = new Chart(ctx, { type:"line", data:{ labels:[], datasets:[] }, options:{ responsive:true, maintainAspectRatio:false } });
+    return;
+  }
+
+  var manyYears = ys.length > 1;
+  var labels = [];
+  ys.forEach(function(y){
+    for(var m=1;m<=12;m++){ labels.push(manyYears ? ("T"+m+"/"+String(y).slice(2)) : ("T"+m)); }
+  });
+
+  var datasets = groupIds.map(function(gid){
+    var g = groupById(gid);
+    var data = [];
+    ys.forEach(function(y){
+      for(var m=1;m<=12;m++){ data.push(totalFor(m, y, gid)); }
+    });
+    var color = slotColor(g.colorIdx);
+    return {
+      label: g.name,
+      data: data,
+      borderColor: color,
+      backgroundColor: color,
+      pointBackgroundColor: color,
+      borderWidth: 2,
+      pointRadius: manyYears ? 2 : 3,
+      pointHoverRadius: 5,
+      tension: 0.25
+    };
+  });
+
+  charts.yearlyTrend = new Chart(ctx, {
+    type: "line",
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction: { mode:"index", intersect:false },
+      plugins:{
+        legend:{ display:true, position:"bottom", labels:{ color: colors.text, boxWidth:10, padding:14, font:{size:11.5} } },
+        tooltip:{ callbacks:{ label:function(ctx2){ return ctx2.dataset.label + ": " + fmtMoney(ctx2.parsed.y); } } }
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{ color: colors.text, font:{size:10}, maxRotation:0, autoSkip:true, autoSkipPadding: manyYears?10:4 } },
+        y:{ grid:{color: colors.grid}, ticks:{ color: colors.text, font:{size:10},
+            callback:function(v){ return (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
+      }
+    }
+  });
+}
 function updateYearCompareTrigger(){
   var ys = yearsInData().filter(function(y){ return yearlyCompareYears[y]; });
   var badge = document.getElementById("yearCompareBadge");
@@ -3629,6 +3890,24 @@ function initYearCompareDropdown(){
   trigger.addEventListener("click", function(e){
     e.stopPropagation();
     dropdown.classList.toggle("open");
+  });
+  document.addEventListener("click", function(e){
+    if(!dropdown.contains(e.target)) dropdown.classList.remove("open");
+  });
+}
+/* Dùng cho các dropdown multi-select MỚI (Nhóm/Năm ở card "Xu hướng theo nhóm") — khác
+   initYearCompareDropdown() ở chỗ mở 1 dropdown sẽ tự đóng MỌI dropdown/select khác đang mở
+   (kể cả .cs-wrapper của enhanceSelect()), tránh 2-3 panel đè lên nhau khi trang có nhiều
+   dropdown cạnh nhau. Không sửa lại initYearCompareDropdown() cũ để tránh ảnh hưởng hành vi
+   đã ổn định của card "So sánh tổng tài sản giữa các năm". */
+function initMultiSelectDropdown(dropdownId, triggerId){
+  var dropdown = document.getElementById(dropdownId);
+  var trigger = document.getElementById(triggerId);
+  trigger.addEventListener("click", function(e){
+    e.stopPropagation();
+    var wasOpen = dropdown.classList.contains("open");
+    document.querySelectorAll(".cs-wrapper.open, .ms-dropdown.open").forEach(function(w){ w.classList.remove("open"); });
+    if(!wasOpen) dropdown.classList.add("open");
   });
   document.addEventListener("click", function(e){
     if(!dropdown.contains(e.target)) dropdown.classList.remove("open");
@@ -3694,9 +3973,131 @@ function renderYearCompareChart(){
 function renderYearlyPage(){
   renderYearChips();
   renderYearlyItemTable();
+  renderTrendGroupChips();
+  renderTrendYearChips();
+  renderYearlyTrendChart();
   renderYearlyGroupCharts();
   renderYearCompareChips();
   renderYearCompareChart();
+  renderMonthCompareTable();
+}
+
+/* ================= SO SÁNH 2 THÁNG BẤT KỲ (trang Thống kê năm) =================
+   Khác với bảng so sánh ở trang Nhập khoản (luôn cố định "tháng này" vs "tháng liền
+   trước"), công cụ này cho chọn TỰ DO 2 mốc tháng/năm bất kỳ (kể cả khác năm) — dùng
+   entriesFor()/itemColor() dùng chung với phần còn lại của app, chỉ khác là hiển thị
+   read-only (không có nút sửa/xoá/copy — trang Thống kê năm vốn không có thao tác sửa
+   dữ liệu, chỉ xem/đối chiếu, giống bảng #yearlyItemTable ở trên). */
+function initMonthCompareTool(){
+  fillMonthSelect(document.getElementById("cmpMonthA"), false);
+  fillYearSelect(document.getElementById("cmpYearA"), false);
+  fillMonthSelect(document.getElementById("cmpMonthB"), false);
+  fillYearSelect(document.getElementById("cmpYearB"), false);
+  fillGroupSelect(document.getElementById("cmpGroup"), true, false);
+
+  // Mặc định: so sánh tháng gần nhất đã có số liệu với tháng liền trước đó — hữu ích
+  // ngay khi mở trang mà không cần tự chọn lại từ đầu mỗi lần.
+  var latest = latestMonthWithData();
+  var mB = latest ? latest.month : (new Date().getMonth()+1);
+  var yB = latest ? latest.year : new Date().getFullYear();
+  var mA = mB===1 ? 12 : mB-1;
+  var yA = mB===1 ? yB-1 : yB;
+  document.getElementById("cmpMonthA").value = mA;
+  document.getElementById("cmpYearA").value = yA;
+  document.getElementById("cmpMonthB").value = mB;
+  document.getElementById("cmpYearB").value = yB;
+
+  ["cmpMonthA","cmpYearA","cmpMonthB","cmpYearB","cmpGroup"].forEach(function(id){
+    document.getElementById(id).addEventListener("change", renderMonthCompareTable);
+  });
+  enhanceSelects(["cmpMonthA","cmpYearA","cmpMonthB","cmpYearB","cmpGroup"]);
+  renderMonthCompareTable();
+}
+function renderMonthCompareTable(){
+  var mA = parseInt(document.getElementById("cmpMonthA").value,10);
+  var yA = parseInt(document.getElementById("cmpYearA").value,10);
+  var mB = parseInt(document.getElementById("cmpMonthB").value,10);
+  var yB = parseInt(document.getElementById("cmpYearB").value,10);
+  var gSel = document.getElementById("cmpGroup").value;
+  var gFilter = gSel==="all" ? null : gSel;
+
+  document.getElementById("cmpColALabel").textContent = MONTH_NAMES[mA-1] + "/" + yA;
+  document.getElementById("cmpColBLabel").textContent = MONTH_NAMES[mB-1] + "/" + yB;
+
+  var byItemA = {}; entriesFor(mA, yA, gFilter).forEach(function(e){ byItemA[e.itemId] = e; });
+  var byItemB = {}; entriesFor(mB, yB, gFilter).forEach(function(e){ byItemB[e.itemId] = e; });
+
+  var rowsMap = {};
+  Object.keys(byItemA).forEach(function(itemId){
+    var it = itemById(itemId);
+    if(!it) return;
+    rowsMap[itemId] = { item: it, ea: byItemA[itemId], eb: byItemB[itemId]||null };
+  });
+  Object.keys(byItemB).forEach(function(itemId){
+    if(rowsMap[itemId]) return;
+    var it = itemById(itemId);
+    if(!it) return;
+    rowsMap[itemId] = { item: it, ea: byItemA[itemId]||null, eb: byItemB[itemId] };
+  });
+
+  var rows = Object.keys(rowsMap).map(function(k){ return rowsMap[k]; });
+  rows.sort(function(a,b){
+    var gA = groupById(a.item.groupId), gB = groupById(b.item.groupId);
+    var gNameA = gA?gA.name:"", gNameB = gB?gB.name:"";
+    return gNameA.localeCompare(gNameB) || a.item.name.localeCompare(b.item.name);
+  });
+
+  // Chọn trùng 1 mốc (A===B) là trạng thái hợp lệ nhưng vô nghĩa để tính biến động —
+  // ẩn hẳn cột Biến động/pill tổng thay vì hiện "Không đổi" cho mọi dòng.
+  var sameMoment = (mA===mB && yA===yB);
+  var totalA = 0, totalB = 0;
+  rows.forEach(function(r){ if(r.ea) totalA += r.ea.amount; if(r.eb) totalB += r.eb.amount; });
+
+  document.getElementById("cmpResultSub").textContent = rows.length ? rows.length+" khoản" : "Không có khoản nào trong 2 mốc đã chọn.";
+
+  var deltaEl = document.getElementById("cmpTotalDelta");
+  if(!sameMoment && (totalA>0 || totalB>0)){
+    var deltaAll = totalB - totalA;
+    var pctAll = totalA>0 ? (deltaAll/totalA*100) : (totalB>0 ? Infinity : 0);
+    deltaEl.textContent = (deltaAll>=0?"+":"") + fmtMoney(deltaAll) + (isFinite(pctAll) ? " (" + fmtPct(pctAll) + ")" : "");
+    deltaEl.className = "kpi-pct-pill " + (deltaAll>=0 ? "up":"down");
+    deltaEl.style.display = "";
+  } else {
+    deltaEl.style.display = "none";
+  }
+
+  document.getElementById("cmpEmptyState").style.display = rows.length ? "none" : "block";
+
+  var tbody = document.getElementById("cmpTableBody");
+  tbody.innerHTML = rows.map(function(r){
+    var g = groupById(r.item.groupId);
+    var color = itemColor(r.item);
+    var gname = g ? g.name : "(đã xoá)";
+    var iname = r.item.name + (r.item.archived ? " (đã ẩn)":"");
+    var cellA = r.ea ? fmtMoney(r.ea.amount) : '<span style="color:var(--muted);">—</span>';
+    var cellB = r.eb ? fmtMoney(r.eb.amount) : '<span style="color:var(--muted);">—</span>';
+    var deltaCell;
+    if(sameMoment){
+      deltaCell = '';
+    } else if(!r.ea && r.eb){
+      deltaCell = '<span class="compare-status-new">Chỉ có ở '+MONTH_NAMES[mB-1]+'</span>';
+    } else if(r.ea && !r.eb){
+      deltaCell = '<span class="compare-status-new">Chỉ có ở '+MONTH_NAMES[mA-1]+'</span>';
+    } else if(r.ea.amount !== r.eb.amount){
+      var delta = r.eb.amount - r.ea.amount;
+      var up = delta>=0;
+      deltaCell = '<span class="'+(up?"compare-delta-up":"compare-delta-down")+'">'+(up?"▲":"▼")+' '+(up?"+":"")+fmtMoney(delta)+'</span>';
+    } else {
+      deltaCell = '<span class="compare-status-same">Không đổi</span>';
+    }
+    return '<tr>'+
+      '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
+      '<td>'+iname+'</td>'+
+      '<td class="num">'+cellA+'</td>'+
+      '<td class="num">'+cellB+'</td>'+
+      '<td class="num">'+deltaCell+'</td>'+
+    '</tr>';
+  }).join("");
 }
 
 /* ================= SEARCH / TRA CỨU PAGE ================= */
@@ -4358,6 +4759,9 @@ function refreshSelectorsThatDependOnYears(){
   keepValue(document.getElementById("searchFromYear"), function(){ fillYearSelect(document.getElementById("searchFromYear"), false); });
   keepValue(document.getElementById("searchToYear"), function(){ fillYearSelect(document.getElementById("searchToYear"), false); });
   keepValue(document.getElementById("searchGroup"), function(){ fillGroupSelect(document.getElementById("searchGroup"), true, false); });
+  keepValue(document.getElementById("cmpYearA"), function(){ fillYearSelect(document.getElementById("cmpYearA"), false); });
+  keepValue(document.getElementById("cmpYearB"), function(){ fillYearSelect(document.getElementById("cmpYearB"), false); });
+  keepValue(document.getElementById("cmpGroup"), function(){ fillGroupSelect(document.getElementById("cmpGroup"), true, false); });
   keepValue(document.getElementById("entryItem"), function(){ fillItemSelectForEntry(); });
 }
 function refreshAllCharts(){
