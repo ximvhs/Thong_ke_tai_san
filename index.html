@@ -241,6 +241,10 @@
     box-shadow:0 10px 24px rgba(124,92,255,0.30);
   }
   .login-form-panel button.login-submit:hover{ filter:brightness(1.07); }
+  .login-forgot-row{ text-align:right; margin:-8px 0 18px; }
+  .login-forgot-link{ color:#a48fff; font-size:12.5px; text-decoration:none; cursor:pointer; }
+  .login-forgot-link:hover{ text-decoration:underline; color:#c4b5fd; }
+  #loginForgotView .login-forgot-row{ text-align:left; margin:14px 0 0; }
 
   @media (max-width:720px){
     .login-visual{ display:none; }
@@ -363,6 +367,14 @@
   .theme-switch-thumb .icon-moon{ color:#5b3fd6; opacity:0; }
   :root:not([data-theme="light"]) .theme-switch-thumb .icon-sun{ opacity:0; }
   :root:not([data-theme="light"]) .theme-switch-thumb .icon-moon{ opacity:1; }
+
+  .theme-switch.privacy-switch .theme-switch-track{ background:linear-gradient(90deg, #3a3f5c 0%, #7c5cff 100%); }
+  .theme-switch.privacy-switch .theme-switch-thumb{ left:3px; }
+  .theme-switch.privacy-switch.on .theme-switch-thumb{ left:24px; }
+  .theme-switch.privacy-switch .theme-switch-thumb .icon-eye{ color:#5b3fd6; opacity:1; }
+  .theme-switch.privacy-switch .theme-switch-thumb .icon-eye-off{ color:#5b3fd6; opacity:0; }
+  .theme-switch.privacy-switch.on .theme-switch-thumb .icon-eye{ opacity:0; }
+  .theme-switch.privacy-switch.on .theme-switch-thumb .icon-eye-off{ opacity:1; }
 
   .btn-logout{
     position:relative; isolation:isolate; overflow:hidden;
@@ -569,6 +581,10 @@
   .growth-total-delta.up{ color:var(--success); }
   .growth-total-delta.down{ color:var(--critical); }
 
+  .goal-progress-track{ position:relative; height:10px; border-radius:6px; background:var(--border); overflow:hidden; }
+  .goal-progress-fill{ height:100%; border-radius:6px; background:linear-gradient(90deg, var(--s1), var(--accent)); transition:width .5s ease; }
+  .goal-progress-fill.reached{ background:linear-gradient(90deg, var(--success), var(--s1)); }
+
   .grid-2{ display:grid; grid-template-columns:1.3fr 1fr; gap:16px; margin-bottom:16px; }
   .grid-groups{ display:grid; grid-template-columns:1fr; gap:16px; }
   @media (max-width:900px){ .grid-2{ grid-template-columns:1fr; } }
@@ -576,6 +592,13 @@
   .card h3{ margin:0 0 14px; font-size:14.5px; }
   .chart-wrap{ position:relative; height:230px; }
   .chart-wrap.small{ height:300px; }
+  .chart-wrap.privacy-blur canvas{ filter:blur(16px) saturate(0.6); pointer-events:none; }
+  .chart-wrap.privacy-blur::after{
+    content:"Số liệu đã ẩn — bấm nút con mắt ở menu để hiện";
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:0 20px; font-size:12.5px; font-weight:600; line-height:1.5;
+    color:var(--text-secondary);
+  }
 
   table{ width:100%; border-collapse:collapse; font-size:13px; }
   th,td{ padding:9px 10px; text-align:left; border-bottom:1px solid var(--gridline); }
@@ -949,19 +972,39 @@
       </div>
     </div>
     <div class="login-form-panel">
-      <h1>Đăng nhập</h1>
-      <p class="login-sub">Nhập mật khẩu để tiếp tục</p>
-      <div class="login-error" id="loginError"></div>
-      <div class="pwd-field">
-        <input type="password" id="loginInput" placeholder="Mật khẩu" autofocus>
-        <button type="button" class="eye-btn" id="togglePwdBtn" aria-label="Hiện mật khẩu">
-          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </button>
+      <div id="loginNormalView">
+        <h1>Đăng nhập</h1>
+        <p class="login-sub">Nhập tài khoản và mật khẩu để tiếp tục</p>
+        <div class="login-error" id="loginError"></div>
+        <div class="pwd-field" id="loginEmailFieldWrap" style="display:none;">
+          <input type="email" id="loginEmailInput" placeholder="Tài khoản (email)" autocomplete="username">
+        </div>
+        <div class="pwd-field">
+          <input type="password" id="loginInput" placeholder="Mật khẩu" autofocus autocomplete="current-password">
+          <button type="button" class="eye-btn" id="togglePwdBtn" aria-label="Hiện mật khẩu">
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="login-forgot-row" id="loginForgotRow" style="display:none;">
+          <a href="#" id="forgotPwdLink" class="login-forgot-link">Quên mật khẩu?</a>
+        </div>
+        <button class="login-submit" id="loginBtn">Đăng nhập</button>
       </div>
-      <button class="login-submit" id="loginBtn">Đăng nhập</button>
+      <div id="loginForgotView" style="display:none;">
+        <h1>Quên mật khẩu</h1>
+        <p class="login-sub">Nhập tài khoản (email) đã đăng ký, hệ thống sẽ gửi email hướng dẫn đặt lại mật khẩu.</p>
+        <div class="login-error" id="forgotError"></div>
+        <div class="pwd-field">
+          <input type="email" id="forgotEmailInput" placeholder="Tài khoản (email)" autocomplete="username">
+        </div>
+        <button class="login-submit" id="forgotSendBtn">Gửi email đặt lại mật khẩu</button>
+        <div class="login-forgot-row">
+          <a href="#" id="backToLoginLink" class="login-forgot-link">← Quay lại đăng nhập</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1030,6 +1073,17 @@
           </span>
         </button>
       </div>
+      <div class="theme-switch-row">
+        <span class="theme-switch-label">Ẩn số liệu</span>
+        <button class="theme-switch privacy-switch on" id="privacyToggle" role="switch" aria-checked="true" aria-label="Ẩn/hiện số liệu tài sản">
+          <span class="theme-switch-track">
+            <span class="theme-switch-thumb">
+              <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a21.6 21.6 0 015.06-5.94M9.9 4.24A9.7 9.7 0 0112 4c7 0 11 7 11 7a21.6 21.6 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </span>
+          </span>
+        </button>
+      </div>
       <button class="btn-logout" id="logoutBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         <span class="label-text">Đăng xuất</span>
@@ -1090,6 +1144,19 @@
           <div class="kpi-value" id="kpiYtd">0 đ</div>
           <span class="kpi-context" id="kpiYtdBadge"></span>
         </div>
+      </div>
+
+      <div class="card" id="goalCard" style="display:none; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+          <h3 style="margin:0;">Mục tiêu tài sản</h3>
+          <span id="goalDeadlineLabel" style="font-size:12px; color:var(--text-secondary);"></span>
+        </div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:10px 0 8px; flex-wrap:wrap;">
+          <div style="font-size:20px; font-weight:800; letter-spacing:-0.01em;"><span id="goalCurrentAmount">0 đ</span> <span style="font-size:13px; font-weight:500; color:var(--text-secondary);">/ <span id="goalTargetAmount">0 đ</span></span></div>
+          <span class="kpi-pct-pill" id="goalPct">0%</span>
+        </div>
+        <div class="goal-progress-track"><div class="goal-progress-fill" id="goalProgressFill" style="width:0%;"></div></div>
+        <div class="sub" id="goalRemainingText" style="margin-top:8px;"></div>
       </div>
 
       <div class="grid-2">
@@ -1457,6 +1524,35 @@
           <button class="btn secondary" id="pwdChangeOpenBtn" style="display:none;">Đổi mật khẩu</button>
         </div>
       </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="settings-row">
+          <div>
+            <div class="t">Mục tiêu tài sản</div>
+            <div class="d">Đặt một mốc tổng tài sản muốn đạt được, kèm hạn hoàn thành nếu muốn. Trang Tổng quan sẽ hiện tiến độ so với mốc này (tính theo tháng đang xem).</div>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <div class="form-field">
+            <label>Số tiền mục tiêu</label>
+            <div class="amount-field">
+              <input type="text" id="goalAmountInput" class="field-input" placeholder="Ví dụ: 1.000.000.000" inputmode="numeric">
+              <span class="suffix">đ</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Hạn hoàn thành (không bắt buộc)</label>
+            <input type="date" id="goalDeadlineInput" class="field-input">
+          </div>
+          <div class="form-field">
+            <label>&nbsp;</label>
+            <button class="btn" id="goalSaveBtn">Lưu mục tiêu</button>
+          </div>
+          <div class="form-field" id="goalClearWrap" style="display:none;">
+            <label>&nbsp;</label>
+            <button class="btn secondary" id="goalClearBtn">Xoá mục tiêu</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1509,6 +1605,29 @@
     <div class="modal-actions">
       <button class="btn secondary" id="pwdChangeModalCancel">Huỷ</button>
       <button class="btn" id="pwdChangeBtn">Đổi mật khẩu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal bắt buộc đặt mật khẩu mới sau khi bấm link "Quên mật khẩu" trong email — không có
+     nút Huỷ/click-ra-ngoài để đóng, vì đây là bước bắt buộc phải hoàn tất trước khi vào app. -->
+<div class="modal-backdrop" id="forcePwdResetModalBackdrop">
+  <div class="modal">
+    <h3>Đặt mật khẩu mới</h3>
+    <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:14px; line-height:1.5;">
+      Bạn vừa xác nhận yêu cầu đặt lại mật khẩu. Vui lòng đặt một mật khẩu mới để tiếp tục đăng nhập.
+    </div>
+    <div class="login-error" id="forcePwdResetError"></div>
+    <div class="form-field" style="margin-bottom:10px;">
+      <label>Mật khẩu mới</label>
+      <input type="password" id="forcePwdNewInput" placeholder="Ít nhất 6 ký tự" style="width:100%;">
+    </div>
+    <div class="form-field" style="margin-bottom:6px;">
+      <label>Nhập lại mật khẩu mới</label>
+      <input type="password" id="forcePwdConfirmInput" placeholder="Nhập lại mật khẩu mới" style="width:100%;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="forcePwdSaveBtn" style="width:100%;">Lưu mật khẩu mới</button>
     </div>
   </div>
 </div>
@@ -1760,6 +1879,19 @@ function setMonthNote(month, year, text){
 /* ================= STATE ================= */
 var state = null;
 
+/* ================= PRIVACY MODE (ẩn số liệu tài sản) =================
+   Mặc định LUÔN bật (privacyMode = true) mỗi khi đăng nhập/tải lại trang — tránh
+   lộ tổng tài sản ngay khi vừa mở app. Người dùng tự bật lại bằng nút con mắt ở
+   sidebar (giống công tắc dark mode) khi muốn xem, KHÔNG lưu lựa chọn này vào
+   localStorage có chủ đích (đúng theo yêu cầu: mỗi lần đăng nhập lại đều ẩn từ đầu).
+   Phạm vi ẩn = "ẩn toàn bộ kể cả biểu đồ": mọi số tiền hiển thị (KPI, bảng, modal,
+   tooltip biểu đồ, nhãn giá trị trên cột) đều đi qua fmtMoney/abbreviateMoney/
+   abbreviateMoneyUnit nên chỉ cần chặn ở 3 hàm này là che được gần hết; phần hình
+   dạng cột/đường của biểu đồ (không đi qua text) được làm mờ riêng bằng CSS qua
+   applyChartPrivacyBlur(). */
+var privacyMode = true;
+var MASK_MONEY = "••••••";
+
 function defaultState(){
   var groups = [
     {id:"g1", name:"Tiền mặt", colorIdx:0},
@@ -1767,7 +1899,7 @@ function defaultState(){
     {id:"g3", name:"Đầu tư", colorIdx:2},
     {id:"g4", name:"Cho mượn", colorIdx:3}
   ];
-  return { groups: groups, items: [], entries: [], nextColorIdx: 4, monthNotes: {} };
+  return { groups: groups, items: [], entries: [], nextColorIdx: 4, monthNotes: {}, assetGoal: { amount: null, deadline: null } };
 }
 
 function uid(){
@@ -1792,6 +1924,7 @@ function migrateState(raw){
   }
   if(raw.nextColorIdx == null) raw.nextColorIdx = raw.groups ? raw.groups.length : 0;
   if(!raw.monthNotes) raw.monthNotes = {};
+  if(!raw.assetGoal) raw.assetGoal = { amount: null, deadline: null };
   return raw;
 }
 
@@ -1800,6 +1933,11 @@ var sb = null;
 if(window.supabase && SUPABASE_URL && SUPABASE_URL.indexOf("YOUR_") !== 0 && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf("YOUR_") !== 0){
   try{
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Bắt sự kiện PASSWORD_RECOVERY khi người dùng bấm link đặt lại mật khẩu trong email quay
+    // lại app — bắt buộc đặt mật khẩu mới ngay qua modal trước khi cho vào app (xem openForcePasswordResetModal()).
+    sb.auth.onAuthStateChange(function(event){
+      if(event === "PASSWORD_RECOVERY") openForcePasswordResetModal();
+    });
   }catch(e){ console.warn("Không khởi tạo được Supabase", e); sb = null; }
 }
 function cloudEnabled(){ return !!sb; }
@@ -1875,14 +2013,15 @@ async function tryLogin(){
   err.textContent = "";
 
   if(authConfigured()){
+    var emailVal = (document.getElementById("loginEmailInput").value || "").trim() || AUTH_EMAIL;
     var btn = document.getElementById("loginBtn");
     var originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Đang đăng nhập…";
     try{
-      var res = await sb.auth.signInWithPassword({ email: AUTH_EMAIL, password: val });
+      var res = await sb.auth.signInWithPassword({ email: emailVal, password: val });
       if(res.error){
-        err.textContent = "Sai mật khẩu, vui lòng thử lại.";
+        err.textContent = "Sai tài khoản hoặc mật khẩu, vui lòng thử lại.";
       } else {
         sessionStorage.setItem(AUTH_KEY, "1");
         showApp();
@@ -1901,11 +2040,94 @@ async function tryLogin(){
     }
   }
 }
+
+/* ================= QUÊN MẬT KHẨU ================= */
+/* Không thể tạo & gửi thẳng "mật khẩu mới" từ phía client (cần service_role key, tuyệt đối
+   không được để lộ trong file HTML public) — nên dùng đúng cơ chế chuẩn của Supabase:
+   gửi email chứa link khôi phục (resetPasswordForEmail), người dùng bấm link quay lại app,
+   Supabase tự phát sự kiện PASSWORD_RECOVERY (xem onAuthStateChange bên dưới) rồi mới cho
+   đặt mật khẩu mới qua modal bắt buộc #forcePwdResetModalBackdrop. LƯU Ý: để link khôi phục
+   hoạt động, phải vào Supabase Dashboard → Authentication → URL Configuration, thêm URL
+   trang này (vd: https://<username>.github.io/<repo>/) vào mục "Redirect URLs". */
+function showLoginForgotView(){
+  document.getElementById("loginError").textContent = "";
+  document.getElementById("loginNormalView").style.display = "none";
+  document.getElementById("loginForgotView").style.display = "block";
+  document.getElementById("forgotError").textContent = "";
+  var emailVal = document.getElementById("loginEmailInput").value.trim() || AUTH_EMAIL;
+  document.getElementById("forgotEmailInput").value = emailVal;
+  setTimeout(function(){ document.getElementById("forgotEmailInput").focus(); }, 60);
+}
+function showLoginNormalView(){
+  document.getElementById("loginForgotView").style.display = "none";
+  document.getElementById("loginNormalView").style.display = "block";
+}
+async function sendForgotPasswordEmail(){
+  var email = document.getElementById("forgotEmailInput").value.trim();
+  var err = document.getElementById("forgotError");
+  err.textContent = "";
+  if(!email){ err.textContent = "Vui lòng nhập tài khoản (email)."; return; }
+  var btn = document.getElementById("forgotSendBtn");
+  var originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Đang gửi…";
+  try{
+    var redirectTo = location.origin + location.pathname;
+    await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+    // Luôn hiện thông báo chung chung dù email có tồn tại hay không, tránh lộ thông tin tài khoản nào tồn tại.
+    toast("Nếu tài khoản tồn tại, email hướng dẫn đặt lại mật khẩu đã được gửi.");
+    showLoginNormalView();
+  }catch(e){
+    err.textContent = "Không gửi được email, vui lòng thử lại sau.";
+  }
+  btn.disabled = false;
+  btn.textContent = originalText;
+}
+function openForcePasswordResetModal(){
+  document.getElementById("loginScreen").style.display = "";
+  document.getElementById("appShell").classList.remove("active");
+  showLoginNormalView();
+  document.getElementById("forcePwdResetError").textContent = "";
+  document.getElementById("forcePwdNewInput").value = "";
+  document.getElementById("forcePwdConfirmInput").value = "";
+  document.getElementById("forcePwdResetModalBackdrop").classList.add("active");
+  setTimeout(function(){ document.getElementById("forcePwdNewInput").focus(); }, 60);
+}
+async function submitForcePasswordReset(){
+  var next = document.getElementById("forcePwdNewInput").value;
+  var confirmVal = document.getElementById("forcePwdConfirmInput").value;
+  var err = document.getElementById("forcePwdResetError");
+  err.textContent = "";
+  if(!next || !confirmVal){ err.textContent = "Vui lòng nhập đủ các trường."; return; }
+  if(next.length < 6){ err.textContent = "Mật khẩu mới cần ít nhất 6 ký tự."; return; }
+  if(next !== confirmVal){ err.textContent = "Mật khẩu nhập lại không khớp."; return; }
+  var btn = document.getElementById("forcePwdSaveBtn");
+  var originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Đang xử lý…";
+  try{
+    var res = await sb.auth.updateUser({ password: next });
+    if(res.error){
+      err.textContent = "Có lỗi xảy ra: " + res.error.message;
+    } else {
+      document.getElementById("forcePwdResetModalBackdrop").classList.remove("active");
+      sessionStorage.setItem(AUTH_KEY, "1");
+      toast("Đã đặt mật khẩu mới, đăng nhập thành công.");
+      showApp();
+    }
+  }catch(e){
+    err.textContent = "Không kết nối được server, vui lòng thử lại.";
+  }
+  btn.disabled = false;
+  btn.textContent = originalText;
+}
 async function showApp(){
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("appShell").classList.add("active");
+  privacyMode = true; // luôn ẩn số liệu ngay khi vào app, mỗi lần đăng nhập
   state = loadState();
   initApp();
+  updatePrivacyToggleUI();
   if(cloudEnabled()){
     setSyncStatus("syncing", "Đang tải dữ liệu từ server…");
     var cloudData = await fetchCloudState();
@@ -1931,10 +2153,12 @@ function logout(){
 
 /* ================= UTIL ================= */
 function fmtMoney(n){
+  if(privacyMode) return MASK_MONEY;
   n = Math.round(n || 0);
   return n.toLocaleString("vi-VN") + " đ";
 }
 function abbreviateMoneyUnit(n){
+  if(privacyMode) return MASK_MONEY;
   n = Math.round(n || 0);
   var abs = Math.abs(n);
   var sign = n<0 ? "-" : "";
@@ -1950,6 +2174,7 @@ function abbreviateMoneyUnit(n){
   return n.toLocaleString("vi-VN");
 }
 function abbreviateMoney(n){
+  if(privacyMode) return MASK_MONEY;
   n = Math.round(n || 0);
   var abs = Math.abs(n);
   var sign = n<0 ? "-" : "";
@@ -2138,6 +2363,7 @@ function initNav(){
     if(ok) logout();
   });
   document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+  document.getElementById("privacyToggle").addEventListener("click", function(){ setPrivacyMode(!privacyMode); });
   var brandEl = document.querySelector(".brand");
   if(brandEl){
     brandEl.addEventListener("click", function(){
@@ -2166,6 +2392,30 @@ function toggleTheme(){
   root.setAttribute("data-theme", next);
   localStorage.setItem("assetTracker_theme", next);
   refreshAllCharts();
+}
+
+/* Làm mờ hình dạng cột/đường của mọi biểu đồ đang có trên trang khi privacyMode bật —
+   phần nhãn/tooltip/số liệu bằng chữ đã tự ẩn qua fmtMoney/abbreviateMoney ở trên rồi,
+   đây chỉ cần xử lý phần hình ảnh (không phải text) mà CSS/JS text-masking không che được.
+   Gọi lại mỗi khi trang chứa biểu đồ (Tổng quan, Thống kê năm) được render lại, vì các
+   trang đó rebuild DOM nên class cũ có thể mất. */
+function applyChartPrivacyBlur(){
+  document.querySelectorAll(".chart-wrap").forEach(function(el){
+    el.classList.toggle("privacy-blur", privacyMode);
+  });
+}
+function updatePrivacyToggleUI(){
+  var btn = document.getElementById("privacyToggle");
+  if(!btn) return;
+  btn.classList.toggle("on", privacyMode);
+  btn.setAttribute("aria-checked", privacyMode ? "true" : "false");
+}
+function setPrivacyMode(on){
+  privacyMode = on;
+  updatePrivacyToggleUI();
+  applyChartPrivacyBlur();
+  var activePageEl = document.querySelector(".page.active");
+  if(activePageEl) renderPage(activePageEl.id.replace("page-",""));
 }
 
 /* ================= SIDEBAR COLLAPSE (desktop) ================= */
@@ -2477,6 +2727,48 @@ function renderDashboard(animate){
   renderTotalByMonthChart(year);
   renderAllocationChart(month, year);
   renderGroupBreakdownTable(month, year);
+  renderGoalCard(total);
+  applyChartPrivacyBlur();
+}
+
+function renderGoalCard(total){
+  var goal = state.assetGoal;
+  var card = document.getElementById("goalCard");
+  if(!goal || !goal.amount || goal.amount <= 0){
+    card.style.display = "none";
+    return;
+  }
+  card.style.display = "";
+  var rawPct = (total / goal.amount) * 100;
+  var pctClamped = Math.max(0, Math.min(100, rawPct));
+  var reached = total >= goal.amount;
+  document.getElementById("goalCurrentAmount").textContent = fmtMoney(total);
+  document.getElementById("goalTargetAmount").textContent = fmtMoney(goal.amount);
+  var pctEl = document.getElementById("goalPct");
+  pctEl.textContent = (rawPct < 0 ? "0" : rawPct.toFixed(1).replace(".",",")) + "%";
+  pctEl.className = "kpi-pct-pill " + (reached ? "up" : "");
+  var fillEl = document.getElementById("goalProgressFill");
+  fillEl.style.width = pctClamped + "%";
+  fillEl.classList.toggle("reached", reached);
+  var remaining = goal.amount - total;
+  var remainingEl = document.getElementById("goalRemainingText");
+  remainingEl.textContent = reached
+    ? "Đã đạt mục tiêu, vượt " + fmtMoney(Math.abs(remaining)) + "."
+    : "Còn thiếu " + fmtMoney(remaining) + " để đạt mục tiêu.";
+  var deadlineLabel = document.getElementById("goalDeadlineLabel");
+  if(goal.deadline){
+    var d = new Date(goal.deadline + "T00:00:00");
+    deadlineLabel.textContent = isNaN(d.getTime()) ? "" : "Hạn: " + d.toLocaleDateString("vi-VN");
+  } else {
+    deadlineLabel.textContent = "";
+  }
+}
+
+function renderSettingsGoalForm(){
+  var goal = (state.assetGoal) || { amount: null, deadline: null };
+  document.getElementById("goalAmountInput").value = goal.amount ? goal.amount.toLocaleString("vi-VN") : "";
+  document.getElementById("goalDeadlineInput").value = goal.deadline || "";
+  document.getElementById("goalClearWrap").style.display = goal.amount ? "" : "none";
 }
 
 function renderTotalByMonthChart(year){
@@ -2516,7 +2808,7 @@ function renderTotalByMonthChart(year){
       scales: {
         x: { grid:{ display:false }, ticks:{ color: colors.text, font:{size:11} } },
         y: { grid:{ color: colors.grid }, ticks:{ color: colors.text, font:{size:11},
-              callback:function(v){ return (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
+              callback:function(v){ return privacyMode ? MASK_MONEY : (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
       }
     }
   });
@@ -3661,7 +3953,7 @@ function renderYearlyGroupCharts(){
         scales:{
           x:{ grid:{display:false}, ticks:{ color: colors.text, font:{size:10} } },
           y:{ grid:{color: colors.grid}, ticks:{ color: colors.text, font:{size:10},
-              callback:function(v){ return (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
+              callback:function(v){ return privacyMode ? MASK_MONEY : (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
         }
       }
     });
@@ -3833,7 +4125,7 @@ function renderYearlyTrendChart(){
       scales:{
         x:{ grid:{display:false}, ticks:{ color: colors.text, font:{size:10}, maxRotation:0, autoSkip:true, autoSkipPadding: manyYears?10:4 } },
         y:{ grid:{color: colors.grid}, ticks:{ color: colors.text, font:{size:10},
-            callback:function(v){ return (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
+            callback:function(v){ return privacyMode ? MASK_MONEY : (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
       }
     }
   });
@@ -3965,7 +4257,7 @@ function renderYearCompareChart(){
       scales:{
         x:{ grid:{display:false}, ticks:{ color: colors.text, font:{size:11.5, weight:"600"} } },
         y:{ grid:{color:colors.grid}, ticks:{ color: colors.text, font:{size:11},
-            callback:function(v){ return (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
+            callback:function(v){ return privacyMode ? MASK_MONEY : (v/1000000).toLocaleString("vi-VN")+"tr"; } } }
       }
     }
   });
@@ -3980,6 +4272,7 @@ function renderYearlyPage(){
   renderYearCompareChips();
   renderYearCompareChart();
   renderMonthCompareTable();
+  applyChartPrivacyBlur();
 }
 
 /* ================= SO SÁNH 2 THÁNG BẤT KỲ (trang Thống kê năm) =================
@@ -4470,6 +4763,35 @@ function initSettingsControls(){
   });
 
   initPasswordChangeUI();
+  initGoalControls();
+}
+function initGoalControls(){
+  var amountInput = document.getElementById("goalAmountInput");
+  amountInput.addEventListener("input", function(){
+    var cursorFromEnd = this.value.length - this.selectionStart;
+    this.value = formatAmountDigits(this.value);
+    var pos = Math.max(0, this.value.length - cursorFromEnd);
+    this.setSelectionRange(pos,pos);
+  });
+  document.getElementById("goalSaveBtn").addEventListener("click", function(){
+    var amount = parseAmountInput(amountInput.value);
+    if(!amount || amount <= 0){ toast("Vui lòng nhập số tiền mục tiêu hợp lệ."); return; }
+    var deadline = document.getElementById("goalDeadlineInput").value || null;
+    state.assetGoal = { amount: amount, deadline: deadline };
+    saveState();
+    renderSettingsGoalForm();
+    toast("Đã lưu mục tiêu tài sản.");
+    if(document.getElementById("page-dashboard").classList.contains("active")) renderDashboard();
+  });
+  document.getElementById("goalClearBtn").addEventListener("click", async function(){
+    var ok = await showConfirm({ title:"Xoá mục tiêu", message:"Xoá mục tiêu tài sản đã đặt?", confirmText:"Xoá mục tiêu" });
+    if(!ok) return;
+    state.assetGoal = { amount: null, deadline: null };
+    saveState();
+    renderSettingsGoalForm();
+    toast("Đã xoá mục tiêu tài sản.");
+    if(document.getElementById("page-dashboard").classList.contains("active")) renderDashboard();
+  });
 }
 function initPasswordChangeUI(){
   var offlineInfo = document.getElementById("pwdInfoOffline");
@@ -4774,6 +5096,7 @@ function renderPage(page){
   else if(page==="groups") renderGroupsManagementPage();
   else if(page==="yearly") renderYearlyPage();
   else if(page==="search") renderSearchResults(true);
+  else if(page==="settings") renderSettingsGoalForm();
 }
 
 /* ================= INIT ================= */
@@ -4820,6 +5143,27 @@ document.getElementById("togglePwdBtn").addEventListener("click", function(){
     ? '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>'
     : '<path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a21.6 21.6 0 015.06-5.94M9.9 4.24A9.7 9.7 0 0112 4c7 0 11 7 11 7a21.6 21.6 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24"/><path d="M1 1l22 22"/>';
   input.focus();
+});
+if(authConfigured()){
+  document.getElementById("loginEmailFieldWrap").style.display = "block";
+  document.getElementById("loginEmailInput").value = AUTH_EMAIL;
+  document.getElementById("loginForgotRow").style.display = "block";
+}
+document.getElementById("forgotPwdLink").addEventListener("click", function(e){
+  e.preventDefault();
+  showLoginForgotView();
+});
+document.getElementById("backToLoginLink").addEventListener("click", function(e){
+  e.preventDefault();
+  showLoginNormalView();
+});
+document.getElementById("forgotSendBtn").addEventListener("click", sendForgotPasswordEmail);
+document.getElementById("forgotEmailInput").addEventListener("keydown", function(e){
+  if(e.key === "Enter") sendForgotPasswordEmail();
+});
+document.getElementById("forcePwdSaveBtn").addEventListener("click", submitForcePasswordReset);
+document.getElementById("forcePwdConfirmInput").addEventListener("keydown", function(e){
+  if(e.key === "Enter") submitForcePasswordReset();
 });
 if(sessionStorage.getItem(AUTH_KEY) === "1"){
   showApp();
