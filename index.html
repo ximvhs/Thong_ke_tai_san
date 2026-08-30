@@ -818,10 +818,10 @@
   /* Khoản nợ — nền đỏ nhạt để dễ nhận diện */
   .entry-row-debt td{ background:rgba(230,103,103,0.12); }
 
-  /* Debt toggle button */
-  .entry-debt-toggle{ transition: all .2s ease; }
-  .entry-debt-toggle:hover{ border-color:var(--accent); background:rgba(124,92,255,0.08); color:var(--text-primary); }
-  .entry-debt-toggle.active{
+  /* Group type toggle button */
+  .group-type-toggle{ transition: all .2s ease; }
+  .group-type-toggle:hover{ border-color:var(--accent); background:rgba(124,92,255,0.08); color:var(--text-primary); }
+  .group-type-toggle.debt{
     background:rgba(230,103,103,0.20);
     border-color:rgba(230,103,103,0.4);
     color:rgba(230,103,103,1);
@@ -1256,16 +1256,6 @@
             <label>Ghi chú (không bắt buộc)</label>
             <input type="text" id="entryNote" class="field-input" placeholder="Ví dụ: lãi tháng này, đã rút bớt..." style="width:100%;">
           </div>
-          <div class="form-field" style="display:flex; align-items:flex-end; gap:12px;">
-            <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); flex:1;">
-              <span style="font-size:13px; color:var(--text-primary); font-weight:500;">Loại khoản</span>
-              <div style="flex:1;"></div>
-              <button class="entry-debt-toggle" id="entryDebtToggle" type="button" style="display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-1); color:var(--text-secondary); font-size:12px; cursor:pointer; transition:all .2s ease;">
-                <svg style="width:14px; height:14px; flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-                <span>Tài sản</span>
-              </button>
-            </div>
-          </div>
           <div class="form-field">
             <button class="btn" id="entrySaveBtn">+ Thêm khoản</button>
           </div>
@@ -1683,6 +1673,17 @@
     <div class="form-field">
       <label>Tên nhóm</label>
       <input type="text" id="groupModalName" placeholder="VD: Vàng, Bảo hiểm...">
+    </div>
+    <div class="form-field">
+      <label>Loại nhóm</label>
+      <div style="display:flex; gap:10px;">
+        <button class="group-type-radio" id="groupTypeAsset" type="button" style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-primary); font-size:13px; cursor:pointer; transition:all .2s ease;" data-type="asset">
+          <span style="font-size:16px; margin-right:6px;">+</span> Tài sản
+        </button>
+        <button class="group-type-radio" id="groupTypeDebt" type="button" style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-primary); font-size:13px; cursor:pointer; transition:all .2s ease;" data-type="debt">
+          <span style="font-size:16px; margin-right:6px;">−</span> Nợ
+        </button>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn secondary" id="groupModalCancel">Huỷ</button>
@@ -3022,7 +3023,7 @@ function renderAllocationChart(month, year){
   var labels = [], data = [], bg = [], groupIds = [];
   state.groups.forEach(function(g, i){
     var t = totalFor(month, year, g.id);
-    if(t>0){ labels.push(g.name); data.push(t); bg.push(slotColor(g.colorIdx)); groupIds.push(g.id); }
+    if(t!==0){ labels.push(g.name); data.push(Math.abs(t)); bg.push(slotColor(g.colorIdx)); groupIds.push(g.id); }
   });
   var ctx = document.getElementById("chartAllocation").getContext("2d");
   destroyChart("allocation");
@@ -3063,7 +3064,7 @@ function renderAllocationChart(month, year){
         },
         tooltip:{ callbacks:{ label:function(ctx){
           var total = ctx.dataset.data.reduce(function(a,b){return a+b;},0);
-          var pct = total>0 ? (ctx.parsed/total*100).toFixed(1) : 0;
+          var pct = total!==0 ? Math.abs(ctx.parsed/total*100).toFixed(1) : 0;
           return ctx.label+": "+fmtMoney(ctx.parsed)+" ("+pct+"%)";
         } } }
       }
@@ -3079,7 +3080,7 @@ function renderGroupBreakdownTable(month, year){
   state.groups.forEach(function(g){
     var list = entriesFor(month, year, g.id);
     var t = list.reduce(function(s,e){return s+e.amount;},0);
-    var pct = total>0 ? (t/total*100).toFixed(1)+"%" : "0%";
+    var pct = total!==0 ? Math.abs(t/total*100).toFixed(1)+"%" : "0%";
     var tr = document.createElement("tr");
     tr.className = "row-clickable";
     tr.innerHTML =
@@ -3194,12 +3195,6 @@ function initEntryControls(){
 
   document.getElementById("entrySaveBtn").addEventListener("click", saveEntry);
 
-  document.getElementById("entryDebtToggle").addEventListener("click", function(e){
-    e.preventDefault();
-    this.classList.toggle("active");
-    updateEntryDebtToggleUI();
-  });
-
   document.getElementById("openMonthNoteBtn").addEventListener("click", function(){
     openMonthNoteModal(parseInt(document.getElementById("entryMonth").value,10), parseInt(document.getElementById("entryYear").value,10));
   });
@@ -3236,15 +3231,6 @@ function updateEntryQtyFieldsVisibility(){
     updateEntryQtyTotalPreview();
   }
 }
-function updateEntryDebtToggleUI(){
-  var btn = document.getElementById("entryDebtToggle");
-  var isActive = btn.classList.contains("active");
-  if(isActive){
-    btn.innerHTML = '<svg style="width:14px; height:14px; flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg><span>Nợ</span>';
-  } else {
-    btn.innerHTML = '<svg style="width:14px; height:14px; flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg><span>Tài sản</span>';
-  }
-}
 function updateEntryQtyTotalPreview(){
   var qty = parseQtyInput(document.getElementById("entryQty").value);
   var price = parseAmountInput(document.getElementById("entryUnitPrice").value);
@@ -3275,10 +3261,12 @@ function saveEntry(){
     if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
   }
 
-  var isDebt = document.getElementById("entryDebtToggle").classList.contains("active");
-  if(isDebt) amount = -amount;
-
   var note = document.getElementById("entryNote").value.trim();
+
+  // Tự động xác định loại dựa vào group type
+  var group = groupById(groupId);
+  var isGroupDebt = group && group.type === "debt";
+  if(isGroupDebt) amount = -amount;
 
   if(editingEntryId){
     var e = state.entries.find(function(x){ return x.id===editingEntryId; });
@@ -3292,8 +3280,6 @@ function saveEntry(){
   document.getElementById("entryAmount").value = "";
   document.getElementById("entryQty").value = "";
   document.getElementById("entryUnitPrice").value = "";
-  document.getElementById("entryDebtToggle").classList.remove("active");
-  updateEntryDebtToggleUI();
   updateEntryQtyTotalPreview();
   document.getElementById("entryNote").value = "";
   toast("Đã lưu khoản.");
@@ -3302,7 +3288,6 @@ function saveEntry(){
 }
 function fillEntryAmountFields(item, e){
   var isQty = !!(item && item.qtyUnit);
-  var isDebt = e.amount < 0;
   if(isQty){
     var qty = (e.qty!=null) ? e.qty : 1;
     var unitPrice = (e.unitPrice!=null) ? e.unitPrice : Math.abs(e.amount);
@@ -3311,12 +3296,6 @@ function fillEntryAmountFields(item, e){
   } else {
     document.getElementById("entryAmount").value = Math.abs(e.amount).toLocaleString("vi-VN");
   }
-  if(isDebt) {
-    document.getElementById("entryDebtToggle").classList.add("active");
-  } else {
-    document.getElementById("entryDebtToggle").classList.remove("active");
-  }
-  updateEntryDebtToggleUI();
   updateEntryQtyFieldsVisibility();
 }
 function editEntry(id){
@@ -3524,7 +3503,14 @@ function openGrowthDetailModal(kind, month, year){
   var baseTotal = totalFor(baseMonth, baseYear, null);
   var curTotal = totalFor(month, year, null);
   var totalDelta = curTotal - baseTotal;
-  var totalPct = baseTotal>0 ? (totalDelta/baseTotal*100) : (curTotal>0 ? Infinity : 0);
+  var totalPct;
+  if(baseTotal>0){
+    totalPct = totalDelta/baseTotal*100;
+  } else if(baseTotal<0){
+    totalPct = totalDelta/baseTotal*100; // âm nên chia vẫn được
+  } else {
+    totalPct = curTotal>0 ? Infinity : 0;
+  }
 
   document.getElementById("growthModalTitle").textContent = kind==="ytd" ? "Tăng trưởng so với đầu năm" : "Tăng trưởng so với tháng trước";
   document.getElementById("growthModalSub").textContent = MONTH_NAMES[month-1] + "/" + year + " · " + label;
@@ -3601,9 +3587,18 @@ function renderEntryTable(){
   var curTotalAll = totalFor(m, y, null);
   var prevTotalAll = totalFor(prevMonth, prevYear, null);
   var totalDeltaEl = document.getElementById("compareTotalDelta");
-  if(curTotalAll>0 || prevTotalAll>0){
+  if(curTotalAll!==0 || prevTotalAll!==0){
     var deltaAll = curTotalAll - prevTotalAll;
-    var pctAll = prevTotalAll>0 ? (deltaAll/prevTotalAll*100) : (curTotalAll>0 ? Infinity : 0);
+    var pctAll;
+    if(prevTotalAll>0){
+      pctAll = deltaAll/prevTotalAll*100;
+    } else if(prevTotalAll<0){
+      // Both periods in debt (negative); percentage is relative to absolute value
+      pctAll = deltaAll/prevTotalAll*100;
+    } else {
+      // prevTotalAll === 0
+      pctAll = curTotalAll!==0 ? Infinity : 0;
+    }
     totalDeltaEl.textContent = (deltaAll>=0?"+":"") + fmtMoney(deltaAll) + (isFinite(pctAll) ? " (" + fmtPct(pctAll) + ")" : "");
     totalDeltaEl.className = "kpi-pct-pill " + (deltaAll>=0 ? "up":"down");
     totalDeltaEl.style.display = "";
@@ -3833,23 +3828,65 @@ async function copyAllMissingFromPrevMonth(){
   refreshSelectorsThatDependOnYears();
 }
 /* ================= GROUP MODAL ================= */
+var groupModalSelectedType = "asset"; // default
 function openGroupModal(onSave){
   var backdrop = document.getElementById("groupModalBackdrop");
   var input = document.getElementById("groupModalName");
+  var assetBtn = document.getElementById("groupTypeAsset");
+  var debtBtn = document.getElementById("groupTypeDebt");
+
   input.value = "";
+  groupModalSelectedType = "asset";
+
+  // Reset button styles
+  [assetBtn, debtBtn].forEach(function(b){
+    b.style.borderColor = "var(--border)";
+    b.style.background = "var(--surface-2)";
+    b.style.color = "var(--text-primary)";
+  });
+  assetBtn.style.borderColor = "var(--accent)";
+  assetBtn.style.background = "rgba(124,92,255,0.16)";
+
   backdrop.classList.add("active");
   input.focus();
+
   function close(){ backdrop.classList.remove("active"); }
   document.getElementById("groupModalCancel").onclick = close;
+
+  assetBtn.onclick = function(e){
+    e.preventDefault();
+    groupModalSelectedType = "asset";
+    [assetBtn, debtBtn].forEach(function(b){
+      b.style.borderColor = "var(--border)";
+      b.style.background = "var(--surface-2)";
+      b.style.color = "var(--text-primary)";
+    });
+    assetBtn.style.borderColor = "var(--accent)";
+    assetBtn.style.background = "rgba(124,92,255,0.16)";
+  };
+
+  debtBtn.onclick = function(e){
+    e.preventDefault();
+    groupModalSelectedType = "debt";
+    [assetBtn, debtBtn].forEach(function(b){
+      b.style.borderColor = "var(--border)";
+      b.style.background = "var(--surface-2)";
+      b.style.color = "var(--text-primary)";
+    });
+    debtBtn.style.borderColor = "rgba(230,103,103,0.6)";
+    debtBtn.style.background = "rgba(230,103,103,0.16)";
+    debtBtn.style.color = "rgba(230,103,103,1)";
+  };
+
   document.getElementById("groupModalSave").onclick = function(){
     var name = input.value.trim();
     if(!name){ toast("Vui lòng nhập tên nhóm."); return; }
-    var g = { id: uid(), name: name, colorIdx: state.nextColorIdx || 0 };
+    var g = { id: uid(), name: name, colorIdx: state.nextColorIdx || 0, type: groupModalSelectedType };
     state.nextColorIdx = (state.nextColorIdx||0) + 1;
     state.groups.push(g);
     saveState();
     close();
-    toast("Đã tạo nhóm \""+name+"\".");
+    toast("Đã tạo nhóm \""+name+"\" (" + (groupModalSelectedType === "debt" ? "Nợ" : "Tài sản") + ").");
     if(onSave) onSave(g);
     if(document.getElementById("page-groups").classList.contains("active")) renderGroupsManagementPage();
   };
@@ -3927,17 +3964,86 @@ function configureItemUnit(id){
 }
 
 /* ================= GROUPS MANAGEMENT PAGE ================= */
-async function renameGroup(id){
+var groupEditingId = null;
+function openGroupEditModal(id){
   var g = groupById(id);
   if(!g) return;
-  var name = await showPrompt({ title:"Đổi tên nhóm", label:"Tên nhóm mới", value: g.name, confirmText:"Lưu" });
-  if(name && name.trim()){
-    g.name = name.trim();
-    saveState();
-    renderGroupsManagementPage();
-    refreshSelectorsThatDependOnYears();
-    toast("Đã đổi tên nhóm.");
+
+  groupEditingId = id;
+  var backdrop = document.getElementById("groupModalBackdrop");
+  var input = document.getElementById("groupModalName");
+  var title = document.getElementById("groupModalTitle");
+  var assetBtn = document.getElementById("groupTypeAsset");
+  var debtBtn = document.getElementById("groupTypeDebt");
+
+  title.textContent = "Sửa nhóm";
+  input.value = g.name;
+  groupModalSelectedType = g.type || "asset";
+
+  // Reset button styles
+  [assetBtn, debtBtn].forEach(function(b){
+    b.style.borderColor = "var(--border)";
+    b.style.background = "var(--surface-2)";
+    b.style.color = "var(--text-primary)";
+  });
+
+  if(groupModalSelectedType === "debt"){
+    debtBtn.style.borderColor = "rgba(230,103,103,0.6)";
+    debtBtn.style.background = "rgba(230,103,103,0.16)";
+    debtBtn.style.color = "rgba(230,103,103,1)";
+  } else {
+    assetBtn.style.borderColor = "var(--accent)";
+    assetBtn.style.background = "rgba(124,92,255,0.16)";
   }
+
+  backdrop.classList.add("active");
+  input.focus();
+
+  function close(){ backdrop.classList.remove("active"); groupEditingId = null; }
+  document.getElementById("groupModalCancel").onclick = close;
+
+  assetBtn.onclick = function(e){
+    e.preventDefault();
+    groupModalSelectedType = "asset";
+    [assetBtn, debtBtn].forEach(function(b){
+      b.style.borderColor = "var(--border)";
+      b.style.background = "var(--surface-2)";
+      b.style.color = "var(--text-primary)";
+    });
+    assetBtn.style.borderColor = "var(--accent)";
+    assetBtn.style.background = "rgba(124,92,255,0.16)";
+  };
+
+  debtBtn.onclick = function(e){
+    e.preventDefault();
+    groupModalSelectedType = "debt";
+    [assetBtn, debtBtn].forEach(function(b){
+      b.style.borderColor = "var(--border)";
+      b.style.background = "var(--surface-2)";
+      b.style.color = "var(--text-primary)";
+    });
+    debtBtn.style.borderColor = "rgba(230,103,103,0.6)";
+    debtBtn.style.background = "rgba(230,103,103,0.16)";
+    debtBtn.style.color = "rgba(230,103,103,1)";
+  };
+
+  document.getElementById("groupModalSave").onclick = function(){
+    var name = input.value.trim();
+    if(!name){ toast("Vui lòng nhập tên nhóm."); return; }
+    var eg = groupById(groupEditingId);
+    if(eg){
+      eg.name = name;
+      eg.type = groupModalSelectedType;
+      saveState();
+      close();
+      toast("Đã cập nhật nhóm \""+name+"\".");
+      renderGroupsManagementPage();
+      refreshSelectorsThatDependOnYears();
+    }
+  };
+}
+async function renameGroup(id){
+  openGroupEditModal(id);
 }
 async function deleteGroup(id){
   var itemIds = itemsForGroup(id).map(function(i){ return i.id; });
