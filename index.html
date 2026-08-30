@@ -818,6 +818,15 @@
   /* Khoản nợ — nền đỏ nhạt để dễ nhận diện */
   .entry-row-debt td{ background:rgba(230,103,103,0.12); }
 
+  /* Debt toggle button */
+  .entry-debt-toggle{ transition: all .2s ease; }
+  .entry-debt-toggle:hover{ border-color:var(--accent); background:rgba(124,92,255,0.08); color:var(--text-primary); }
+  .entry-debt-toggle.active{
+    background:rgba(230,103,103,0.20);
+    border-color:rgba(230,103,103,0.4);
+    color:rgba(230,103,103,1);
+  }
+
   /* growth detail modal tabs (Tổng quát / Tăng / Giảm / Không đổi) */
   .growth-tabs{ display:flex; gap:6px; margin:14px 0 10px; flex-wrap:wrap; }
   .growth-tab{
@@ -1247,11 +1256,15 @@
             <label>Ghi chú (không bắt buộc)</label>
             <input type="text" id="entryNote" class="field-input" placeholder="Ví dụ: lãi tháng này, đã rút bớt..." style="width:100%;">
           </div>
-          <div class="form-field" style="display:flex; align-items:flex-end; gap:8px;">
-            <label style="flex:1; margin-bottom:0;">
-              <input type="checkbox" id="entryIsDebt" style="margin-right:6px;">
-              Là khoản nợ
-            </label>
+          <div class="form-field" style="display:flex; align-items:flex-end; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); flex:1;">
+              <span style="font-size:13px; color:var(--text-primary); font-weight:500;">Loại khoản</span>
+              <div style="flex:1;"></div>
+              <button class="entry-debt-toggle" id="entryDebtToggle" type="button" style="display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-1); color:var(--text-secondary); font-size:12px; cursor:pointer; transition:all .2s ease;">
+                <svg style="width:14px; height:14px; flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+                <span>Tài sản</span>
+              </button>
+            </div>
           </div>
           <div class="form-field">
             <button class="btn" id="entrySaveBtn">+ Thêm khoản</button>
@@ -3181,6 +3194,12 @@ function initEntryControls(){
 
   document.getElementById("entrySaveBtn").addEventListener("click", saveEntry);
 
+  document.getElementById("entryDebtToggle").addEventListener("click", function(e){
+    e.preventDefault();
+    this.classList.toggle("active");
+    updateEntryDebtToggleUI();
+  });
+
   document.getElementById("openMonthNoteBtn").addEventListener("click", function(){
     openMonthNoteModal(parseInt(document.getElementById("entryMonth").value,10), parseInt(document.getElementById("entryYear").value,10));
   });
@@ -3217,6 +3236,15 @@ function updateEntryQtyFieldsVisibility(){
     updateEntryQtyTotalPreview();
   }
 }
+function updateEntryDebtToggleUI(){
+  var btn = document.getElementById("entryDebtToggle");
+  var isActive = btn.classList.contains("active");
+  if(isActive){
+    btn.innerHTML = '<svg style="width:14px; height:14px; flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg><span>Nợ</span>';
+  } else {
+    btn.innerHTML = '<svg style="width:14px; height:14px; flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg><span>Tài sản</span>';
+  }
+}
 function updateEntryQtyTotalPreview(){
   var qty = parseQtyInput(document.getElementById("entryQty").value);
   var price = parseAmountInput(document.getElementById("entryUnitPrice").value);
@@ -3247,7 +3275,7 @@ function saveEntry(){
     if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
   }
 
-  var isDebt = document.getElementById("entryIsDebt").checked;
+  var isDebt = document.getElementById("entryDebtToggle").classList.contains("active");
   if(isDebt) amount = -amount;
 
   var note = document.getElementById("entryNote").value.trim();
@@ -3264,7 +3292,8 @@ function saveEntry(){
   document.getElementById("entryAmount").value = "";
   document.getElementById("entryQty").value = "";
   document.getElementById("entryUnitPrice").value = "";
-  document.getElementById("entryIsDebt").checked = false;
+  document.getElementById("entryDebtToggle").classList.remove("active");
+  updateEntryDebtToggleUI();
   updateEntryQtyTotalPreview();
   document.getElementById("entryNote").value = "";
   toast("Đã lưu khoản.");
@@ -3282,7 +3311,12 @@ function fillEntryAmountFields(item, e){
   } else {
     document.getElementById("entryAmount").value = Math.abs(e.amount).toLocaleString("vi-VN");
   }
-  document.getElementById("entryIsDebt").checked = isDebt;
+  if(isDebt) {
+    document.getElementById("entryDebtToggle").classList.add("active");
+  } else {
+    document.getElementById("entryDebtToggle").classList.remove("active");
+  }
+  updateEntryDebtToggleUI();
   updateEntryQtyFieldsVisibility();
 }
 function editEntry(id){
