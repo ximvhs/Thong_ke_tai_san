@@ -765,7 +765,8 @@
   .group-manage-card.gm-collapsed .group-tabs,
   .group-manage-card.gm-collapsed .add-item-row{ display:none; }
   .group-collapse-btn{ padding:6px 10px; font-size:14px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:transform .2s ease; }
-  .group-collapse-btn.collapsed svg{ transform:rotate(-90deg); }
+  .group-collapse-btn svg{ transform:rotate(-90deg); }
+  .group-collapse-btn:not(.collapsed) svg{ transform:rotate(0deg); }
   .modal-message{ font-size:13.5px; color:var(--text-secondary); line-height:1.6; margin:0 0 4px; }
   .note-modal-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; }
   .note-modal-head h3{ margin:0; font-weight:700; font-size:16.5px; }
@@ -3982,7 +3983,8 @@ function openGroupEditModal(id){
   var debtBtn = document.getElementById("groupTypeDebt");
 
   title.textContent = "Sửa nhóm";
-  input.value = g.name;
+  input.value = "";
+  input.placeholder = "Tên nhóm mới...";
   groupModalSelectedType = g.type || "asset";
 
   // Reset button styles
@@ -4226,7 +4228,7 @@ function renderGroupsManagementPage(){
     var tab = groupsManageActiveTab[g.id] || "active";
     var color = slotColor(g.colorIdx);
     var card = document.createElement("div");
-    var isCollapsed = groupsManageCollapsed[g.id];
+    var isCollapsed = groupsManageCollapsed[g.id] !== false;
     card.className = "card group-manage-card" + (isCollapsed ? " gm-collapsed" : "");
     card.setAttribute("data-group-id", g.id);
 
@@ -4234,7 +4236,7 @@ function renderGroupsManagementPage(){
 
     card.innerHTML =
       '<div class="group-manage-head">'+
-        '<span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+escapeHtml(g.name)+'</span>'+
+        '<span class="group-tag group-name-toggle" data-id="'+g.id+'" style="background:'+color+'22; color:'+color+'; cursor:pointer;"><span class="dot-sw" style="background:'+color+'"></span>'+escapeHtml(g.name)+'</span>'+
         '<div>'+
           '<button class="icon-btn group-collapse-btn'+(isCollapsed?" collapsed":"")+'" data-act="collapse-group" data-id="'+g.id+'" title="'+(isCollapsed?"Mở rộng":"Thu gọn")+' nhóm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>'+
           iconBtnHtml({act:"rename-group", id:g.id, icon:"edit", title:"Đổi tên nhóm"})+
@@ -4258,20 +4260,28 @@ function renderGroupsManagementPage(){
       switchGroupTab(t.getAttribute("data-group"), t.getAttribute("data-tab"));
     });
   });
+  function toggleGroupCollapse(gid){
+    var btn = wrap.querySelector('[data-act="collapse-group"][data-id="'+gid+'"]');
+    groupsManageCollapsed[gid] = !groupsManageCollapsed[gid];
+    var card = wrap.querySelector('.group-manage-card[data-group-id="'+gid+'"]');
+    if(groupsManageCollapsed[gid]){
+      card.classList.add("gm-collapsed");
+      if(btn) btn.classList.add("collapsed");
+      if(btn) btn.title = "Mở rộng nhóm";
+    } else {
+      card.classList.remove("gm-collapsed");
+      if(btn) btn.classList.remove("collapsed");
+      if(btn) btn.title = "Thu gọn nhóm";
+    }
+  }
   wrap.querySelectorAll("[data-act='collapse-group']").forEach(function(b){
     b.addEventListener("click", function(){
-      var gid = b.getAttribute("data-id");
-      groupsManageCollapsed[gid] = !groupsManageCollapsed[gid];
-      var card = wrap.querySelector('.group-manage-card[data-group-id="'+gid+'"]');
-      if(groupsManageCollapsed[gid]){
-        card.classList.add("gm-collapsed");
-        b.classList.add("collapsed");
-        b.title = "Mở rộng nhóm";
-      } else {
-        card.classList.remove("gm-collapsed");
-        b.classList.remove("collapsed");
-        b.title = "Thu gọn nhóm";
-      }
+      toggleGroupCollapse(b.getAttribute("data-id"));
+    });
+  });
+  wrap.querySelectorAll(".group-name-toggle").forEach(function(t){
+    t.addEventListener("click", function(){
+      toggleGroupCollapse(t.getAttribute("data-id"));
     });
   });
   wrap.querySelectorAll("[data-act='rename-group']").forEach(function(b){ b.addEventListener("click", function(){ renameGroup(b.getAttribute("data-id")); }); });
@@ -5713,7 +5723,6 @@ document.getElementById("togglePwdBtn").addEventListener("click", function(){
 });
 if(authConfigured()){
   document.getElementById("loginEmailFieldWrap").style.display = "block";
-  document.getElementById("loginEmailInput").value = AUTH_EMAIL;
   document.getElementById("loginForgotRow").style.display = "block";
 }
 document.getElementById("forgotPwdLink").addEventListener("click", function(e){
