@@ -815,6 +815,8 @@
   /* dòng đầu tiên của nhóm "chưa nhập tháng này" (xếp dưới cùng) — chỉ 1 viền mảnh để tách khỏi
      nhóm khoản đã có số liệu tháng này ở trên, không cần nhãn/tiêu đề chèn giữa bảng. */
   .entry-row-missing-divider td{ border-top:2px solid var(--border); }
+  /* Khoản nợ — nền đỏ nhạt để dễ nhận diện */
+  .entry-row-debt td{ background:rgba(230,103,103,0.12); }
 
   /* growth detail modal tabs (Tổng quát / Tăng / Giảm / Không đổi) */
   .growth-tabs{ display:flex; gap:6px; margin:14px 0 10px; flex-wrap:wrap; }
@@ -1244,6 +1246,12 @@
           <div class="form-field" style="flex:1 1 220px;">
             <label>Ghi chú (không bắt buộc)</label>
             <input type="text" id="entryNote" class="field-input" placeholder="Ví dụ: lãi tháng này, đã rút bớt..." style="width:100%;">
+          </div>
+          <div class="form-field" style="display:flex; align-items:flex-end; gap:8px;">
+            <label style="flex:1; margin-bottom:0;">
+              <input type="checkbox" id="entryIsDebt" style="margin-right:6px;">
+              Là khoản nợ
+            </label>
           </div>
           <div class="form-field">
             <button class="btn" id="entrySaveBtn">+ Thêm khoản</button>
@@ -2301,7 +2309,9 @@ function escapeHtml(s){
 function fmtMoney(n){
   if(privacyMode) return MASK_MONEY;
   n = Math.round(n || 0);
-  return n.toLocaleString("vi-VN") + " đ";
+  var isNegative = n < 0;
+  var abs = Math.abs(n);
+  return (isNegative ? "- " : "") + abs.toLocaleString("vi-VN") + " đ";
 }
 function abbreviateMoneyUnit(n){
   if(privacyMode) return MASK_MONEY;
@@ -3237,6 +3247,9 @@ function saveEntry(){
     if(!isFinite(amount) || amount < 0){ toast("Số tiền không hợp lệ."); return; }
   }
 
+  var isDebt = document.getElementById("entryIsDebt").checked;
+  if(isDebt) amount = -amount;
+
   var note = document.getElementById("entryNote").value.trim();
 
   if(editingEntryId){
@@ -3251,6 +3264,7 @@ function saveEntry(){
   document.getElementById("entryAmount").value = "";
   document.getElementById("entryQty").value = "";
   document.getElementById("entryUnitPrice").value = "";
+  document.getElementById("entryIsDebt").checked = false;
   updateEntryQtyTotalPreview();
   document.getElementById("entryNote").value = "";
   toast("Đã lưu khoản.");
@@ -3259,14 +3273,16 @@ function saveEntry(){
 }
 function fillEntryAmountFields(item, e){
   var isQty = !!(item && item.qtyUnit);
+  var isDebt = e.amount < 0;
   if(isQty){
     var qty = (e.qty!=null) ? e.qty : 1;
-    var unitPrice = (e.unitPrice!=null) ? e.unitPrice : e.amount;
+    var unitPrice = (e.unitPrice!=null) ? e.unitPrice : Math.abs(e.amount);
     document.getElementById("entryQty").value = qty.toLocaleString("vi-VN", {maximumFractionDigits:6});
     document.getElementById("entryUnitPrice").value = Math.round(unitPrice).toLocaleString("vi-VN");
   } else {
-    document.getElementById("entryAmount").value = e.amount.toLocaleString("vi-VN");
+    document.getElementById("entryAmount").value = Math.abs(e.amount).toLocaleString("vi-VN");
   }
+  document.getElementById("entryIsDebt").checked = isDebt;
   updateEntryQtyFieldsVisibility();
 }
 function editEntry(id){
@@ -3658,7 +3674,9 @@ function renderEntryTable(){
       ? '<button class="note-icon-btn" data-act="note" data-id="'+ce.id+'" title="Xem ghi chú" aria-label="Xem ghi chú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>'
       : '';
     var delBtn = ce ? iconBtnHtml({act:"del", id:ce.id, icon:"trash", title:"Xoá", extraClass:"del"}) : '';
-    return '<tr'+(missingDivider ? ' class="entry-row-missing-divider"' : '')+'>'+
+    var isDebtRow = ce && ce.amount < 0;
+    var trClass = (missingDivider ? 'entry-row-missing-divider' : '') + (isDebtRow ? ' entry-row-debt' : '');
+    return '<tr'+(trClass ? ' class="'+trClass.trim()+'"' : '')+'>'+
       '<td>'+(ce ? '<input type="checkbox" class="entry-row-cb" data-id="'+ce.id+'">' : '')+'</td>'+
       '<td><span class="group-tag" style="background:'+color+'22; color:'+color+'"><span class="dot-sw" style="background:'+color+'"></span>'+gname+'</span></td>'+
       '<td>'+iname+'</td>'+
