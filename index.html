@@ -739,7 +739,8 @@
 
   /* groups management */
   .groups-manage-grid{ display:flex; flex-direction:column; gap:16px; }
-  .group-manage-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  .group-manage-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:nowrap; gap:8px; }
+  .group-manage-head > div{ display:flex; align-items:center; gap:6px; }
   /* Tên nhóm ở đầu mỗi thẻ quản lý cần nổi bật hơn để lướt mắt nhận ra ngay — .group-tag
      dùng chung ở nhiều nơi khác (bảng Tra cứu, Nhập khoản...) nên chỉ phóng to riêng ở đây. */
   .group-manage-head .group-tag{ font-size:16px; padding:7px 16px; font-weight:700; }
@@ -761,10 +762,13 @@
      tbody của đúng nhóm đó và dùng class này để tạo hiệu ứng mượt. */
   .group-manage-card .table-scroll{ transition: opacity .15s ease, transform .15s ease, height .22s ease; overflow-y:hidden; }
   .group-manage-card .table-scroll.gm-tab-fade{ opacity:0; transform:translateY(4px); }
-  .group-manage-card.gm-collapsed .table-scroll,
+  .group-manage-card .group-tabs,
+  .group-manage-card .table-scroll,
+  .group-manage-card .add-item-row{ transition: opacity .2s ease, max-height .3s ease, margin .2s ease; max-height:2000px; opacity:1; margin-bottom:14px; }
   .group-manage-card.gm-collapsed .group-tabs,
-  .group-manage-card.gm-collapsed .add-item-row{ display:none; }
-  .group-collapse-btn{ padding:6px 10px; font-size:14px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:transform .2s ease; }
+  .group-manage-card.gm-collapsed .table-scroll,
+  .group-manage-card.gm-collapsed .add-item-row{ max-height:0; opacity:0; margin-bottom:0; overflow:hidden; }
+  .group-collapse-btn{ padding:6px 10px; font-size:14px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:transform .2s ease; flex-shrink:0; }
   .group-collapse-btn svg{ transform:rotate(-90deg); }
   .group-collapse-btn:not(.collapsed) svg{ transform:rotate(0deg); }
   .modal-message{ font-size:13.5px; color:var(--text-secondary); line-height:1.6; margin:0 0 4px; }
@@ -3983,8 +3987,8 @@ function openGroupEditModal(id){
   var debtBtn = document.getElementById("groupTypeDebt");
 
   title.textContent = "Sửa nhóm";
-  input.value = "";
-  input.placeholder = "Tên nhóm mới...";
+  input.value = g.name;
+  input.placeholder = "Tên nhóm...";
   groupModalSelectedType = g.type || "asset";
 
   // Reset button styles
@@ -4039,13 +4043,28 @@ function openGroupEditModal(id){
     if(!name){ toast("Vui lòng nhập tên nhóm."); return; }
     var eg = groupById(groupEditingId);
     if(eg){
+      var oldType = eg.type || "asset";
+      var newType = groupModalSelectedType;
+      var typeChanged = oldType !== newType;
       eg.name = name;
-      eg.type = groupModalSelectedType;
+      eg.type = newType;
+      if(typeChanged){
+        // Đổi loại nhóm (Tài sản <-> Nợ): đảo dấu toàn bộ số liệu ĐÃ NHẬP TỪ TRƯỚC trong nhóm
+        // này cho khớp loại mới — nếu không, số liệu cũ vẫn giữ dấu cũ (VD: nhóm vừa đổi thành
+        // Nợ nhưng các khoản đã nhập trước đó vẫn dương) khiến tổng tài sản tính sai.
+        var itemIds = itemsForGroup(eg.id).map(function(i){ return i.id; });
+        state.entries.forEach(function(e){
+          if(itemIds.indexOf(e.itemId) !== -1){
+            e.amount = newType === "debt" ? -Math.abs(e.amount) : Math.abs(e.amount);
+          }
+        });
+      }
       saveState();
       close();
-      toast("Đã cập nhật nhóm \""+name+"\".");
+      toast("Đã cập nhật nhóm \""+name+"\"" + (typeChanged ? " (đã chuyển đổi dấu toàn bộ số liệu cũ)" : "") + ".");
       renderGroupsManagementPage();
       refreshSelectorsThatDependOnYears();
+      if(typeChanged) refreshAllCharts();
     }
   };
 }
@@ -4238,9 +4257,9 @@ function renderGroupsManagementPage(){
       '<div class="group-manage-head">'+
         '<span class="group-tag group-name-toggle" data-id="'+g.id+'" style="background:'+color+'22; color:'+color+'; cursor:pointer;"><span class="dot-sw" style="background:'+color+'"></span>'+escapeHtml(g.name)+'</span>'+
         '<div>'+
-          '<button class="icon-btn group-collapse-btn'+(isCollapsed?" collapsed":"")+'" data-act="collapse-group" data-id="'+g.id+'" title="'+(isCollapsed?"Mở rộng":"Thu gọn")+' nhóm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>'+
           iconBtnHtml({act:"rename-group", id:g.id, icon:"edit", title:"Đổi tên nhóm"})+
           iconBtnHtml({act:"del-group", id:g.id, icon:"trash", title:"Xoá nhóm", extraClass:"del"})+
+          '<button class="icon-btn group-collapse-btn'+(isCollapsed?" collapsed":"")+'" data-act="collapse-group" data-id="'+g.id+'" title="'+(isCollapsed?"Mở rộng":"Thu gọn")+' nhóm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>'+
         '</div>'+
       '</div>'+
       '<div class="group-tabs">'+
@@ -4262,7 +4281,13 @@ function renderGroupsManagementPage(){
   });
   function toggleGroupCollapse(gid){
     var btn = wrap.querySelector('[data-act="collapse-group"][data-id="'+gid+'"]');
-    groupsManageCollapsed[gid] = !groupsManageCollapsed[gid];
+    // Mặc định chưa từng bấm (undefined) nghĩa là "đang đóng" (giống lúc render ban đầu dùng
+    // "!==false") — nếu chỉ phủ định thẳng !groupsManageCollapsed[gid] thì !undefined = true,
+    // vô tình set lại đúng trạng thái "đang đóng" ở lần bấm đầu tiên (không có gì đổi), phải
+    // bấm lần 2 mới thực sự đảo được. Tính currently-collapsed theo đúng quy ước ở render rồi
+    // mới đảo, để lần bấm đầu tiên luôn có tác dụng ngay.
+    var wasCollapsed = groupsManageCollapsed[gid] !== false;
+    groupsManageCollapsed[gid] = !wasCollapsed;
     var card = wrap.querySelector('.group-manage-card[data-group-id="'+gid+'"]');
     if(groupsManageCollapsed[gid]){
       card.classList.add("gm-collapsed");
